@@ -34,7 +34,7 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
   `]
 })
 export class Tictactest extends CommonExternalComponent {
-  cells: string[] = Array(9).fill(null);
+  cells: (string | null)[] = Array(9).fill(null);
   currentPlayer: string = 'X';
   winner: string | null = null;
 
