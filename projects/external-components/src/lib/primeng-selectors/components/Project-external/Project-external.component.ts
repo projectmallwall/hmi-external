@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { CommonExternalComponent } from '../common-external/common-external.component';
 
 type Cell = {
-  value: number | null;
+  value: number;
   readonly: boolean;
 };
 
@@ -14,7 +14,7 @@ type Cell = {
         <input
           *ngFor="let cell of row; let j = index"
           [readonly]="cell.readonly"
-          [value]="cell.value !== null ? cell.value : ''"
+          [value]="cell.value !== 0 ? cell.value : ''"
           maxlength="1"
           (input)="onInput($event, i, j)"
           class="sudoku-cell"
@@ -58,16 +58,16 @@ type Cell = {
 })
 export class Project extends CommonExternalComponent {
   board: Cell[][] = [];
-  private initial: number[][] = [
-    [5, 3, null, null, 7, null, null, null, null],
-    [6, null, null, 1, 9, 5, null, null, null],
-    [null, 9, 8, null, null, null, null, 6, null],
-    [8, null, null, null, 6, null, null, null, 3],
-    [4, null, null, 8, null, 3, null, null, 1],
-    [7, null, null, null, 2, null, null, null, 6],
-    [null, 6, null, null, null, null, 2, 8, null],
-    [null, null, null, 4, 1, 9, null, null, 5],
-    [null, null, null, null, 8, null, null, 7, 9]
+  private readonly initial: number[][] = [
+    [5, 3, 0, 0, 7, 0, 0, 0, 0],
+    [6, 0, 0, 1, 9, 5, 0, 0, 0],
+    [0, 9, 8, 0, 0, 0, 0, 6, 0],
+    [8, 0, 0, 0, 6, 0, 0, 0, 3],
+    [4, 0, 0, 8, 0, 3, 0, 0, 1],
+    [7, 0, 0, 0, 2, 0, 0, 0, 6],
+    [0, 6, 0, 0, 0, 0, 2, 8, 0],
+    [0, 0, 0, 4, 1, 9, 0, 0, 5],
+    [0, 0, 0, 0, 8, 0, 0, 7, 9]
   ];
   resultMessage: string = '';
 
@@ -80,7 +80,7 @@ export class Project extends CommonExternalComponent {
     this.board = this.initial.map(row =>
       row.map(val => ({
         value: val,
-        readonly: val !== null
+        readonly: val !== 0
       }))
     );
     this.resultMessage = '';
@@ -92,7 +92,7 @@ export class Project extends CommonExternalComponent {
     if (!isNaN(num) && num >= 1 && num <= 9) {
       this.board[i][j].value = num;
     } else {
-      this.board[i][j].value = null;
+      this.board[i][j].value = 0;
       input.value = '';
     }
   }
@@ -110,8 +110,8 @@ export class Project extends CommonExternalComponent {
     for (let i = 0; i < 9; i++) {
       const rowSet = new Set<number>();
       for (let j = 0; j < 9; j++) {
-        const val = this.board[i][j].value;
-        if (!val || rowSet.has(val)) return false;
+        const val: number = this.board[i][j].value;
+        if (val === 0 || rowSet.has(val)) return false;
         rowSet.add(val);
       }
     }
@@ -119,8 +119,8 @@ export class Project extends CommonExternalComponent {
     for (let j = 0; j < 9; j++) {
       const colSet = new Set<number>();
       for (let i = 0; i < 9; i++) {
-        const val = this.board[i][j].value;
-        if (!val || colSet.has(val)) return false;
+        const val: number = this.board[i][j].value;
+        if (val === 0 || colSet.has(val)) return false;
         colSet.add(val);
       }
     }
@@ -130,8 +130,8 @@ export class Project extends CommonExternalComponent {
         const blockSet = new Set<number>();
         for (let i = 0; i < 3; i++) {
           for (let j = 0; j < 3; j++) {
-            const val = this.board[blockRow * 3 + i][blockCol * 3 + j].value;
-            if (!val || blockSet.has(val)) return false;
+            const val: number = this.board[blockRow * 3 + i][blockCol * 3 + j].value;
+            if (val === 0 || blockSet.has(val)) return false;
             blockSet.add(val);
           }
         }
@@ -143,6 +143,7 @@ export class Project extends CommonExternalComponent {
 
 /*
 Features:
+- Strict typing: No nulls, uses 0 for empty cells.
 - Displays a static Sudoku puzzle grid.
 - Allows user input in editable cells (1-9 only).
 - Readonly cells show the initial puzzle.
