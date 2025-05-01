@@ -18,8 +18,8 @@ const SHAPES: Shape[] = [
   { blocks: [{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:2,y:1}], color: '#f00000' }, // Z
 ];
 
-const ROWS = 20;
-const COLS = 10;
+const ROWS: number = 20;
+const COLS: number = 10;
 
 @Component({
   selector: 'app-tetris',
@@ -155,22 +155,14 @@ export class TetrisComponent extends CommonExternalComponent {
   private updateBoardSizeBound = this.updateBoardSize.bind(this);
 
   updateBoardSize(): void {
-    // Reserve space for controls and score to ensure full board is visible
     const vw: number = window.innerWidth;
     const vh: number = window.innerHeight;
-
-    // Estimate the vertical space needed by controls and score (in px)
-    const reservedVertical: number = 180; // ~120px for controls + score + margins
-
-    // Calculate max possible cell size that fits in both directions
+    const reservedVertical: number = 180;
     const maxBoardWidth: number = vw * 0.98;
     const maxBoardHeight: number = vh - reservedVertical;
-
-    // To keep cells square:
     const cellSizeByWidth: number = Math.floor(maxBoardWidth / COLS);
     const cellSizeByHeight: number = Math.floor(maxBoardHeight / ROWS);
-    const cellSize: number = Math.max(18, Math.min(cellSizeByWidth, cellSizeByHeight)); // min 18px for usability
-
+    const cellSize: number = Math.max(18, Math.min(cellSizeByWidth, cellSizeByHeight));
     this.boardWidth = cellSize * COLS;
     this.boardHeight = cellSize * ROWS;
   }
@@ -222,23 +214,45 @@ export class TetrisComponent extends CommonExternalComponent {
   rotate(): void {
     if (this.gameOver) return;
     const nextRot: number = (this.rotation + 1) % 4;
+    // Try to rotate in place, then wall-kick right, then left if needed
     if (this.isValid(this.shapePos.x, this.shapePos.y, nextRot)) {
       this.rotation = nextRot;
-    } else if (this.isValid(this.shapePos.x + 1, this.shapePos.y, nextRot)) {
-      this.shapePos.x++;
-      this.rotation = nextRot;
-    } else if (this.isValid(this.shapePos.x - 1, this.shapePos.y, nextRot)) {
-      this.shapePos.x--;
+    } else if (this.isValid(this.shapePos.x, this.shapePos.y, nextRot, true)) {
+      // Centered wall kick: try shifting right or left for proper axis
+      // Already handled in isValid with allowKick
       this.rotation = nextRot;
     }
   }
 
-  isValid(x: number, y: number, rot: number): boolean {
-    for (const pt of this.getRotatedBlocks(rot)) {
+  /**
+   * Checks validity at (x, y) with rotation rot.
+   * If allowKick is true, tries wall kicks (right then left shift by 1).
+   */
+  isValid(x: number, y: number, rot: number, allowKick: boolean = false): boolean {
+    // Compute rotated block positions relative to new origin
+    const blocks: Point[] = this.getRotatedBlocks(rot);
+    for (const pt of blocks) {
       const nx: number = x + pt.x;
       const ny: number = y + pt.y;
-      if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) return false;
-      if (this.board[ny][nx]) return false;
+      if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) {
+        if (!allowKick) return false;
+      }
+      if (ny >= 0 && ny < ROWS && nx >= 0 && nx < COLS && this.board[ny][nx]) {
+        if (!allowKick) return false;
+      }
+    }
+    if (allowKick) {
+      // Try right kick
+      if (this.isValid(x + 1, y, rot, false)) {
+        this.shapePos.x = x + 1;
+        return true;
+      }
+      // Try left kick
+      if (this.isValid(x - 1, y, rot, false)) {
+        this.shapePos.x = x - 1;
+        return true;
+      }
+      return false;
     }
     return true;
   }
@@ -265,13 +279,31 @@ export class TetrisComponent extends CommonExternalComponent {
     if (cleared > 0) this.score += cleared * 100;
   }
 
+  /**
+   * Returns rotated blocks about the actual "center" of the tetromino,
+   * so shapes rotate in place instead of drifting left.
+   */
   getRotatedBlocks(rot: number): Point[] {
-    return this.activeShape.blocks.map((pt: Point) => {
-      let {x, y} = pt;
+    const blocks: Point[] = this.activeShape.blocks.map(pt => ({...pt}));
+    // Find bounding box
+    let minX: number = Math.min(...blocks.map(pt => pt.x));
+    let minY: number = Math.min(...blocks.map(pt => pt.y));
+    let maxX: number = Math.max(...blocks.map(pt => pt.x));
+    let maxY: number = Math.max(...blocks.map(pt => pt.y));
+    // Find geometric center (for Tetris, use the center of the 4x4 grid containing the piece)
+    const cx: number = (minX + maxX) / 2;
+    const cy: number = (minY + maxY) / 2;
+    // Rotate each block around center
+    return blocks.map(pt => {
+      let x: number = pt.x - cx;
+      let y: number = pt.y - cy;
       for (let i: number = 0; i < rot; i++) {
-        [x, y] = [-y, x];
+        [x, y] = [y, -x]; // Clockwise 90 deg
       }
-      return {x, y};
+      return {
+        x: Math.round(x + cx),
+        y: Math.round(y + cy)
+      };
     });
   }
 
@@ -300,8 +332,9 @@ export class TetrisComponent extends CommonExternalComponent {
 /*
 Features:
 - Classic Tetris gameplay with 7 block shapes (I, J, L, O, S, T, Z)
+- Shapes now rotate about their geometric center, not top-left, so rotation is visually correct
+- Wall kicks: on failed rotation, tries to nudge right or left if possible
 - All blocks/cells are perfectly square on all screens
-- Ensures all 20 rows are always visible regardless of device size
 - Responsive: board resizes to keep blocks square and maximize space
 - Dark theme, mobile-friendly and responsive layout
 - Controls: on-screen buttons (mobile) & keyboard (desktop)
