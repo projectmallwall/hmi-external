@@ -47,7 +47,7 @@ type Group = {
             {{group.name}} ({{group.members.length}} members)
           </li>
         </ul>
-        <form (submit)="addGroup()" autocomplete="off">
+        <form (submit)="addGroup(); $event.preventDefault();" autocomplete="off">
           <input type="text" [(ngModel)]="newGroupName" name="groupName" placeholder="New group name" required />
           <button type="submit">Add Group</button>
         </form>
@@ -62,20 +62,20 @@ type Group = {
           </li>
         </ul>
         <hr>
-        <form (submit)="addExpense()" autocomplete="off">
+        <form (ngSubmit)="addExpense(); $event.preventDefault();" #expenseFormRef="ngForm" autocomplete="off">
           <input type="text" [(ngModel)]="expenseForm.description" name="desc" placeholder="Description" required />
           <input type="number" [(ngModel)]="expenseForm.amount" name="amount" min="0.01" step="0.01" placeholder="Amount" required />
           <input type="date" [(ngModel)]="expenseForm.date" name="date" required />
           <select [(ngModel)]="expenseForm.payerId" name="payer" required>
-            <option [ngValue]="null" disabled>Payer</option>
+            <option [ngValue]="null" disabled selected>Payer</option>
             <option *ngFor="let m of selectedGroup.members" [value]="m.id">{{m.name}}</option>
           </select>
           <label>Split with:</label>
           <div class="split-list">
             <label *ngFor="let m of selectedGroup.members">
-              <input type="checkbox" [value]="m.id"
-                [(ngModel)]="expenseForm.splitWithIds"
-                name="splitWith-{{m.id}}" [checked]="expenseForm.splitWithIds.includes(m.id)" />
+              <input type="checkbox"
+                [checked]="expenseForm.splitWithIds.includes(m.id)"
+                (change)="onSplitWithChange(m.id, $event.target.checked)" />
               {{m.name}}
             </label>
           </div>
@@ -86,7 +86,7 @@ type Group = {
         <ul>
           <li *ngFor="let m of selectedGroup.members">{{m.name}}</li>
         </ul>
-        <form (submit)="addMember()" autocomplete="off">
+        <form (submit)="addMember(); $event.preventDefault();" autocomplete="off">
           <input type="text" [(ngModel)]="newMemberName" name="memberName" placeholder="New member name" required />
           <button type="submit">Add Member</button>
         </form>
@@ -224,15 +224,20 @@ export class ExpenseSplitterComponent extends CommonExternalComponent {
   }
 
   addExpense(): void {
-    if (!this.selectedGroup ||
-        !this.expenseForm.description.trim() ||
-        !this.expenseForm.amount ||
-        !this.expenseForm.date ||
-        !this.expenseForm.payerId ||
-        !this.expenseForm.splitWithIds.length) return;
+    if (
+      !this.selectedGroup ||
+      !this.expenseForm.description.trim() ||
+      this.expenseForm.amount === null ||
+      this.expenseForm.amount <= 0 ||
+      !this.expenseForm.date ||
+      !this.expenseForm.payerId ||
+      !this.expenseForm.splitWithIds.length
+    ) {
+      return;
+    }
     const expense: Expense = {
       id: crypto.randomUUID(),
-      amount: this.expenseForm.amount,
+      amount: Number(this.expenseForm.amount),
       description: this.expenseForm.description.trim(),
       date: this.expenseForm.date,
       payerId: this.expenseForm.payerId,
@@ -257,6 +262,17 @@ export class ExpenseSplitterComponent extends CommonExternalComponent {
     if (!this.selectedGroup) return '';
     const m = this.selectedGroup.members.find(x => x.id === id);
     return m ? m.name : '';
+  }
+
+  // Checkbox handling for splitWithIds
+  onSplitWithChange(memberId: string, checked: boolean): void {
+    if (checked) {
+      if (!this.expenseForm.splitWithIds.includes(memberId)) {
+        this.expenseForm.splitWithIds.push(memberId);
+      }
+    } else {
+      this.expenseForm.splitWithIds = this.expenseForm.splitWithIds.filter(id => id !== memberId);
+    }
   }
 
   // --- Calculation helpers ---
