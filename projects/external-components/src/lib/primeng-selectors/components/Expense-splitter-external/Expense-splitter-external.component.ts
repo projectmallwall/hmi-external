@@ -1,5 +1,3 @@
-// expense-splitter.component.ts
-
 import { Component } from '@angular/core';
 import { CommonExternalComponent } from '../common-external/common-external.component';
 
@@ -75,7 +73,7 @@ type Group = {
             <label *ngFor="let m of selectedGroup.members">
               <input type="checkbox"
                 [checked]="expenseForm.splitWithIds.includes(m.id)"
-                (change)="onSplitWithChange(m.id, $event.target.checked)" />
+                (change)="onSplitWithChange(m.id, $event)" />
               {{m.name}}
             </label>
           </div>
@@ -265,7 +263,9 @@ export class ExpenseSplitterComponent extends CommonExternalComponent {
   }
 
   // Checkbox handling for splitWithIds
-  onSplitWithChange(memberId: string, checked: boolean): void {
+  onSplitWithChange(memberId: string, event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const checked: boolean = !!input?.checked;
     if (checked) {
       if (!this.expenseForm.splitWithIds.includes(memberId)) {
         this.expenseForm.splitWithIds.push(memberId);
