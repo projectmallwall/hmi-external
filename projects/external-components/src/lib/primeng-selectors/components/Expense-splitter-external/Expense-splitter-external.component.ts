@@ -9,6 +9,8 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
 // - Group summary: total spent per person, net balances
 // - All data stored in browser IndexedDB (no backend)
 // - Simple navigation between groups, expenses, summaries
+// - Soft color palette & rounded corners for UI
+// - Expense form validation with error messages
 
 type Member = { id: string; name: string };
 type Expense = {
@@ -60,14 +62,49 @@ type Group = {
           </li>
         </ul>
         <hr>
-        <form (ngSubmit)="addExpense(); $event.preventDefault();" #expenseFormRef="ngForm" autocomplete="off">
-          <input type="text" [(ngModel)]="expenseForm.description" name="desc" placeholder="Description" required />
-          <input type="number" [(ngModel)]="expenseForm.amount" name="amount" min="0.01" step="0.01" placeholder="Amount" required />
-          <input type="date" [(ngModel)]="expenseForm.date" name="date" required />
-          <select [(ngModel)]="expenseForm.payerId" name="payer" required>
+        <form (ngSubmit)="validateAndAddExpense(); $event.preventDefault();" #expenseFormRef="ngForm" autocomplete="off" novalidate>
+          <input
+            type="text"
+            [(ngModel)]="expenseForm.description"
+            name="desc"
+            placeholder="Description"
+            required
+            [class.invalid]="expenseErrors.description"
+          />
+          <span class="error" *ngIf="expenseErrors.description">{{expenseErrors.description}}</span>
+          
+          <input
+            type="number"
+            [(ngModel)]="expenseForm.amount"
+            name="amount"
+            min="0.01"
+            step="0.01"
+            placeholder="Amount"
+            required
+            [class.invalid]="expenseErrors.amount"
+          />
+          <span class="error" *ngIf="expenseErrors.amount">{{expenseErrors.amount}}</span>
+          
+          <input
+            type="date"
+            [(ngModel)]="expenseForm.date"
+            name="date"
+            required
+            [class.invalid]="expenseErrors.date"
+          />
+          <span class="error" *ngIf="expenseErrors.date">{{expenseErrors.date}}</span>
+          
+          <select
+            [(ngModel)]="expenseForm.payerId"
+            name="payer"
+            required
+            [class.invalid]="expenseErrors.payerId"
+          >
             <option [ngValue]="null" disabled selected>Payer</option>
             <option *ngFor="let m of selectedGroup.members" [value]="m.id">{{m.name}}</option>
           </select>
+          <span class="error" *ngIf="expenseErrors.payerId">{{expenseErrors.payerId}}</span>
+          
           <label>Split with:</label>
           <div class="split-list">
             <label *ngFor="let m of selectedGroup.members">
@@ -77,6 +114,7 @@ type Group = {
               {{m.name}}
             </label>
           </div>
+          <span class="error" *ngIf="expenseErrors.splitWithIds">{{expenseErrors.splitWithIds}}</span>
           <button type="submit">Add Expense</button>
         </form>
         <hr>
@@ -111,19 +149,134 @@ type Group = {
     </div>
   `,
   styles: [`
-    .container { max-width: 400px; margin: auto; padding: 1em; font-family: sans-serif; }
-    nav { display: flex; gap: 1em; margin-bottom: 1em; }
-    ul { padding-left: 1em; }
-    form { margin-top: 1em; display: flex; flex-direction: column; gap: 0.5em; }
-    input, select, button { font-size: 1em; padding: 0.4em; border-radius: 4px; border: 1px solid #ccc; }
-    button { background: #007bff; color: white; border: none; cursor: pointer; }
-    button:hover { background: #0056b3; }
-    .split-list { display: flex; flex-wrap: wrap; gap: 0.5em; }
-    .positive { color: green; }
-    .negative { color: red; }
+    .container {
+      max-width: 420px;
+      margin: auto;
+      padding: 1.5em;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f7fafc;
+      border-radius: 18px;
+      box-shadow: 0 2px 8px rgba(110, 123, 139, 0.07);
+    }
+    h2, h3, h4 {
+      color: #465775;
+      margin-top: 0.3em;
+    }
+    nav {
+      display: flex;
+      gap: 1em;
+      margin-bottom: 1em;
+    }
+    nav button {
+      background: #b5ead7;
+      color: #465775;
+      border: none;
+      border-radius: 12px;
+      padding: 0.5em 1.1em;
+      font-weight: 500;
+      transition: background 0.2s;
+      box-shadow: 0 1px 3px rgba(181,234,215,0.16);
+    }
+    nav button:hover {
+      background: #86e7c5;
+    }
+    section, form, ul, li, input, select, button {
+      border-radius: 12px;
+    }
+    section {
+      background: #ffffffcc;
+      padding: 1em;
+      margin-bottom: 1em;
+      box-shadow: 0 1px 6px rgba(70,87,117,0.06);
+    }
+    ul {
+      padding-left: 1em;
+      margin: 0.5em 0 1em 0;
+      background: #f2f6fc;
+      border-radius: 10px;
+    }
+    ul li {
+      margin: 0.4em 0;
+      padding: 0.3em 0.6em;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: background 0.15s;
+    }
+    ul li:hover {
+      background: #d4eaf7;
+    }
+    form {
+      margin-top: 1em;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5em;
+      background: #e4eaf7;
+      padding: 0.8em;
+      border-radius: 14px;
+      box-shadow: 0 1px 3px rgba(70,87,117,0.04);
+    }
+    input, select, button {
+      font-size: 1em;
+      padding: 0.45em 0.7em;
+      border-radius: 10px;
+      border: 1px solid #bcdff1;
+      outline: none;
+      background: #fafdfe;
+      margin-bottom: 0;
+    }
+    input:focus, select:focus {
+      border-color: #a7e9af;
+      background: #e8fce8;
+    }
+    button {
+      background: #b5ead7;
+      color: #465775;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.2em;
+      transition: background 0.2s;
+      box-shadow: 0 1px 2px rgba(181,234,215,0.11);
+    }
+    button:hover {
+      background: #86e7c5;
+    }
+    .split-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5em;
+      margin-bottom: 0.2em;
+    }
+    .split-list label {
+      background: #f2f6fc;
+      padding: 0.25em 0.7em;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .split-list label:hover {
+      background: #d4eaf7;
+    }
+    .positive { color: #2bb673; font-weight: 600;}
+    .negative { color: #e17055; font-weight: 600;}
+    .error {
+      color: #e17055;
+      font-size: 0.95em;
+      margin-bottom: -0.3em;
+      margin-top: -0.3em;
+      padding-left: 0.2em;
+      display: block;
+      font-weight: 500;
+    }
+    input.invalid, select.invalid {
+      border: 1.5px solid #e17055;
+      background: #fff6f5;
+    }
     @media (max-width: 600px) {
       .container { padding: 0.5em; }
       nav { flex-direction: column; gap: 0.5em; }
+      section { padding: 0.7em; }
+      form { padding: 0.6em; }
     }
   `]
 })
@@ -142,6 +295,15 @@ export class ExpenseSplitterComponent extends CommonExternalComponent {
     payerId: string|null;
     splitWithIds: string[];
   } = this.resetExpenseForm();
+
+  // Validation errors for expense form
+  expenseErrors: {
+    description?: string;
+    amount?: string;
+    date?: string;
+    payerId?: string;
+    splitWithIds?: string;
+  } = {};
 
   constructor() {
     super();
@@ -221,24 +383,48 @@ export class ExpenseSplitterComponent extends CommonExternalComponent {
     this.newMemberName = '';
   }
 
-  addExpense(): void {
-    if (
-      !this.selectedGroup ||
-      !this.expenseForm.description.trim() ||
-      this.expenseForm.amount === null ||
-      this.expenseForm.amount <= 0 ||
-      !this.expenseForm.date ||
-      !this.expenseForm.payerId ||
-      !this.expenseForm.splitWithIds.length
-    ) {
-      return;
+  validateAndAddExpense(): void {
+    this.expenseErrors = {};
+    let valid = true;
+
+    if (!this.expenseForm.description.trim()) {
+      this.expenseErrors.description = 'Description is required.';
+      valid = false;
     }
+    if (
+      this.expenseForm.amount === null ||
+      isNaN(Number(this.expenseForm.amount)) ||
+      Number(this.expenseForm.amount) <= 0
+    ) {
+      this.expenseErrors.amount = 'Enter a valid positive amount.';
+      valid = false;
+    }
+    if (!this.expenseForm.date) {
+      this.expenseErrors.date = 'Date is required.';
+      valid = false;
+    }
+    if (!this.expenseForm.payerId) {
+      this.expenseErrors.payerId = 'Select a payer.';
+      valid = false;
+    }
+    if (!this.expenseForm.splitWithIds.length) {
+      this.expenseErrors.splitWithIds = 'Select at least one member to split with.';
+      valid = false;
+    }
+    if (!valid) return;
+
+    this.addExpense();
+    this.expenseErrors = {};
+  }
+
+  addExpense(): void {
+    if (!this.selectedGroup) return;
     const expense: Expense = {
       id: crypto.randomUUID(),
       amount: Number(this.expenseForm.amount),
       description: this.expenseForm.description.trim(),
       date: this.expenseForm.date,
-      payerId: this.expenseForm.payerId,
+      payerId: this.expenseForm.payerId!,
       splitWithIds: [...this.expenseForm.splitWithIds]
     };
     this.selectedGroup.expenses.push(expense);
