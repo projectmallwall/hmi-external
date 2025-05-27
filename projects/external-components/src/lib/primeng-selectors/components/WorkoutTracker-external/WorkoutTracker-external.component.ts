@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, FormArray, AbstractControl } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CommonExternalComponent } from '../common-external/common-external.component';
 
 /*
@@ -12,6 +12,7 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
   - View and update logs for each day's workout
   - Uses Angular Reactive Forms with strict type checking
   - Inline HTML & CSS
+  - All buttons use a consistent green color (#43a047)
 */
 
 type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
@@ -117,11 +118,16 @@ interface DailyPlan {
     button[type="submit"] {
       flex: 0 0 70px;
       padding: 0.4rem;
-      background: #1976d2;
+      background: #43a047;
       color: #fff;
       border: none;
       border-radius: 4px;
       cursor: pointer;
+      transition: background 0.2s;
+    }
+    button[type="submit"]:hover,
+    button[type="submit"]:focus {
+      background: #388e3c;
     }
     table {
       width: 100%;
@@ -138,12 +144,17 @@ interface DailyPlan {
       background: #e3f2fd;
     }
     button {
-      background: #d32f2f;
+      background: #43a047;
       color: #fff;
       border: none;
       padding: 0.3rem 0.7rem;
       border-radius: 4px;
       cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover,
+    button:focus {
+      background: #388e3c;
     }
     @media (max-width: 800px) {
       .workout-container {
