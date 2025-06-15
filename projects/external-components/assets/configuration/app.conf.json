@@ -1,1 +1,48 @@
-{}
+{
+  "Harry-Potters-Resume": {
+    "headerField": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Harry-Potters-Resume/Harry-Potters-Resume/header.field.json"
+    },
+    "headerSection": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Harry-Potters-Resume/Harry-Potters-Resume/header.section.json"
+    },
+    "field": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Harry-Potters-Resume/Harry-Potters-Resume/body.field.json"
+    },
+    "section": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Harry-Potters-Resume/Harry-Potters-Resume/body.section.json"
+    },
+    "footerField": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Harry-Potters-Resume/Harry-Potters-Resume/footer.field.json"
+    },
+    "footerSection": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Harry-Potters-Resume/Harry-Potters-Resume/footer.section.json"
+    },
+    "data": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Harry-Potters-Resume/Harry-Potters-Resume/body.data.json"
+    },
+    "navField": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Harry-Potters-Resume/Harry-Potters-Resume/nav.field.json"
+    },
+    "navSection": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Harry-Potters-Resume/Harry-Potters-Resume/nav.section.json"
+    },
+    "authGuardConfig": {
+      "enabled": false,
+      "conditions": []
+    },
+    "globalPageSettings": {
+      "title": "Harry-Potters-Resume",
+      "layoutProperties": null
+    }
+  }
+}
