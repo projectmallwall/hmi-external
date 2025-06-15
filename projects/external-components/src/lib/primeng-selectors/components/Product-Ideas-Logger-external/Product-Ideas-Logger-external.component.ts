@@ -18,93 +18,172 @@ interface ProductIdea {
   template: `
     <!--
       Product-Ideas-Logger Features:
-      - Add products with desired features.
+      - Add products and their features.
       - Mark features as implemented (strike-through).
       - Download/upload data as .txt file.
-      - Bootstrap-styled UI.
+      - No Bootstrap; all styles are inline.
     -->
-    <div class="container my-4">
-      <div class="card shadow-sm mb-4">
-        <div class="card-body">
-          <h2 class="card-title mb-3">Product Ideas Logger</h2>
-          <form (ngSubmit)="addProduct()" class="row g-2 align-items-center mb-3">
-            <div class="col">
-              <input type="text"
-                     [(ngModel)]="newProductName"
-                     name="productName"
-                     class="form-control"
-                     placeholder="Product Name"
-                     required />
-            </div>
-            <div class="col-auto">
-              <button type="submit" class="btn btn-primary">Add Product</button>
-            </div>
+    <div style="max-width:600px;margin:32px auto;padding:0 8px;">
+      <div style="background:#fff;border-radius:12px;box-shadow:0 2px 8px #0001;margin-bottom:24px;">
+        <div style="padding:24px;">
+          <h2 style="margin:0 0 18px 0;font-size:1.5rem;">Product Ideas Logger</h2>
+          <form (ngSubmit)="addProduct()" style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
+            <input type="text"
+                   [(ngModel)]="newProductName"
+                   name="productName"
+                   [style]="inputStyle"
+                   placeholder="Product Name"
+                   required />
+            <button type="submit" [style]="primaryBtnStyle">Add Product</button>
           </form>
         </div>
       </div>
 
-      <div *ngFor="let product of products; let i = index" class="card mb-3 shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <span class="fw-bold">{{ product.name }}</span>
-          <button class="btn btn-sm btn-danger" (click)="removeProduct(i)">
+      <div *ngFor="let product of products; let i = index"
+           style="background:#fff;border-radius:12px;box-shadow:0 2px 8px #0001;margin-bottom:18px;">
+        <div style="padding:14px 20px 10px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #eee;">
+          <span style="font-weight:600;font-size:1.1rem;">{{ product.name }}</span>
+          <button (click)="removeProduct(i)"
+                  [style]="dangerSmBtnStyle">
             Remove Product
           </button>
         </div>
-        <div class="card-body">
-          <ul class="list-group mb-3">
+        <div style="padding:16px 20px 12px 20px;">
+          <ul style="list-style:none;padding:0;margin:0 0 15px 0;">
             <li *ngFor="let feature of product.features; let j = index"
-                class="list-group-item d-flex justify-content-between align-items-center"
-                [class.text-decoration-line-through]="feature.implemented"
-                [class.text-muted]="feature.implemented"
-                style="cursor:pointer;"
-                (click)="toggleFeature(i, j)">
+                (click)="toggleFeature(i, j)"
+                [ngStyle]="{
+                  'display': 'flex',
+                  'justify-content': 'space-between',
+                  'align-items': 'center',
+                  'padding': '7px 0',
+                  'border-bottom': j < product.features.length-1 ? '1px solid #f0f0f0' : '',
+                  'cursor': 'pointer',
+                  'color': feature.implemented ? '#999' : '#222',
+                  'text-decoration': feature.implemented ? 'line-through' : 'none',
+                  'user-select': 'none'
+                }">
               <span>{{ feature.name }}</span>
-              <button class="btn btn-sm btn-outline-danger ms-2"
-                      (click)="removeFeature(i, j); $event.stopPropagation()">
+              <button (click)="removeFeature(i, j); $event.stopPropagation();"
+                      [style]="outlineDangerBtnStyle">
                 ✕
               </button>
             </li>
-            <li *ngIf="product.features.length === 0" class="list-group-item text-secondary fst-italic">
+            <li *ngIf="product.features.length === 0"
+                style="color:#bbb;font-style:italic;padding:7px 0;">
               No features added yet.
             </li>
           </ul>
-          <form (ngSubmit)="addFeature(i)" class="row g-2 align-items-center">
-            <div class="col">
-              <input type="text"
-                     [(ngModel)]="featureInputs[i]"
-                     name="featureInput{{i}}"
-                     class="form-control"
-                     placeholder="Add Feature"
-                     required />
-            </div>
-            <div class="col-auto">
-              <button type="submit" class="btn btn-success">Add Feature</button>
-            </div>
+          <form (ngSubmit)="addFeature(i)" style="display:flex;gap:8px;align-items:center;">
+            <input type="text"
+                   [(ngModel)]="featureInputs[i]"
+                   [name]="'featureInput'+i"
+                   [style]="inputStyle"
+                   placeholder="Add Feature"
+                   required />
+            <button type="submit" [style]="successBtnStyle">Add Feature</button>
           </form>
         </div>
       </div>
 
-      <div class="d-flex gap-3 mt-4">
-        <button class="btn btn-outline-primary" (click)="downloadData()">Download Data (.txt)</button>
-        <label class="btn btn-outline-secondary mb-0">
+      <div style="display:flex;gap:12px;margin-top:28px;">
+        <button (click)="downloadData()" [style]="outlinePrimaryBtnStyle">Download Data (.txt)</button>
+        <label [style]="outlineSecondaryBtnStyle+'margin-bottom:0;cursor:pointer;'">
           Upload Data (.txt)
-          <input type="file" accept=".txt" (change)="uploadData($event)" hidden />
+          <input type="file" accept=".txt" (change)="uploadData($event)" style="display:none;" />
         </label>
       </div>
     </div>
   `,
   styles: [`
-    /* Additional minimal custom styling for spacing */
-    .card { border-radius: 0.75rem; }
-    .list-group-item { user-select: none; }
-    .btn-outline-danger { padding: 0 8px; }
+    /* No global or bootstrap styles used */
   `]
 })
 export class ProductIdeasLoggerComponent extends CommonExternalComponent {
+  // Strict typing for variables
   newProductName: string = '';
   featureInputs: string[] = [];
   products: ProductIdea[] = [];
 
+  // Inline button/input styles as readonly properties
+  readonly inputStyle = `
+    flex:1;
+    padding:7px 12px;
+    border:1px solid #ccc;
+    border-radius:6px;
+    font-size:1rem;
+    background:#fafbfc;
+    outline:none;
+    transition:border-color .2s;
+  `;
+  readonly primaryBtnStyle = `
+    background:#2563eb;
+    color:#fff;
+    border:none;
+    border-radius:6px;
+    padding:7px 18px;
+    font-size:1rem;
+    font-weight:500;
+    cursor:pointer;
+    transition:background .2s;
+  `;
+  readonly successBtnStyle = `
+    background:#059669;
+    color:#fff;
+    border:none;
+    border-radius:6px;
+    padding:7px 14px;
+    font-size:1rem;
+    font-weight:500;
+    cursor:pointer;
+    transition:background .2s;
+  `;
+  readonly dangerSmBtnStyle = `
+    background:#ef4444;
+    color:#fff;
+    border:none;
+    border-radius:5px;
+    padding:4px 11px;
+    font-size:0.95rem;
+    font-weight:500;
+    cursor:pointer;
+    transition:background .2s;
+  `;
+  readonly outlineDangerBtnStyle = `
+    background:transparent;
+    color:#ef4444;
+    border:1px solid #ef4444;
+    border-radius:5px;
+    padding:2px 9px;
+    font-size:1rem;
+    cursor:pointer;
+    margin-left:10px;
+    transition:background .2s,color .2s;
+  `;
+  readonly outlinePrimaryBtnStyle = `
+    background:transparent;
+    color:#2563eb;
+    border:1.5px solid #2563eb;
+    border-radius:6px;
+    padding:7px 17px;
+    font-size:1rem;
+    font-weight:500;
+    cursor:pointer;
+    transition:background .2s,color .2s;
+  `;
+  readonly outlineSecondaryBtnStyle = `
+    background:transparent;
+    color:#374151;
+    border:1.5px solid #cbd5e1;
+    border-radius:6px;
+    padding:7px 17px;
+    font-size:1rem;
+    font-weight:500;
+    display:inline-block;
+    transition:background .2s,color .2s;
+  `;
+
+  // Add a new product with empty features array
   addProduct(): void {
     if (!this.newProductName.trim()) return;
     this.products.push({ name: this.newProductName.trim(), features: [] });
@@ -112,11 +191,13 @@ export class ProductIdeasLoggerComponent extends CommonExternalComponent {
     this.newProductName = '';
   }
 
+  // Remove a product and its input field
   removeProduct(index: number): void {
     this.products.splice(index, 1);
     this.featureInputs.splice(index, 1);
   }
 
+  // Add a feature to a product
   addFeature(productIndex: number): void {
     const input: string = this.featureInputs[productIndex];
     if (!input || !input.trim()) return;
@@ -124,15 +205,18 @@ export class ProductIdeasLoggerComponent extends CommonExternalComponent {
     this.featureInputs[productIndex] = '';
   }
 
+  // Remove a feature from a product
   removeFeature(productIndex: number, featureIndex: number): void {
     this.products[productIndex].features.splice(featureIndex, 1);
   }
 
+  // Toggle feature implemented status (strike-through)
   toggleFeature(productIndex: number, featureIndex: number): void {
     const feature: ProductFeature = this.products[productIndex].features[featureIndex];
     feature.implemented = !feature.implemented;
   }
 
+  // Download all product data as .txt file
   downloadData(): void {
     const data: string = JSON.stringify(this.products);
     const blob: Blob = new Blob([data], { type: 'text/plain' });
@@ -144,6 +228,7 @@ export class ProductIdeasLoggerComponent extends CommonExternalComponent {
     window.URL.revokeObjectURL(url);
   }
 
+  // Upload product data from .txt file
   uploadData(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;
