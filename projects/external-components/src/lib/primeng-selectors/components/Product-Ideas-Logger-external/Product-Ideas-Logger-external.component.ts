@@ -13,6 +13,8 @@ interface ProductIdea {
   features: ProductFeature[];
 }
 
+const LOCAL_STORAGE_KEY = 'productIdeasLoggerData';
+
 @Component({
   selector: 'app-product-ideas-logger',
   template: `
@@ -21,6 +23,7 @@ interface ProductIdea {
       - Add products and their features.
       - Mark features as implemented (strike-through).
       - Download/upload data as .txt file.
+      - All data persists in local storage.
       - No Bootstrap; all styles are inline.
     -->
     <div style="max-width:600px;margin:32px auto;padding:0 8px;">
@@ -100,12 +103,10 @@ interface ProductIdea {
   `]
 })
 export class ProductIdeasLoggerComponent extends CommonExternalComponent {
-  // Strict typing for variables
   newProductName: string = '';
   featureInputs: string[] = [];
   products: ProductIdea[] = [];
 
-  // Inline button/input styles as readonly properties
   readonly inputStyle = `
     flex:1;
     padding:7px 12px;
@@ -183,40 +184,76 @@ export class ProductIdeasLoggerComponent extends CommonExternalComponent {
     transition:background .2s,color .2s;
   `;
 
-  // Add a new product with empty features array
+  constructor() {
+    super();
+    this.loadFromLocalStorage();
+  }
+
+  private saveToLocalStorage(): void {
+    try {
+      window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(this.products));
+    } catch (e) {
+      // Ignore quota errors
+    }
+  }
+
+  private loadFromLocalStorage(): void {
+    try {
+      const raw: string | null = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (raw) {
+        const parsed: unknown = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          this.products = parsed.map((p: any) => ({
+            name: typeof p.name === 'string' ? p.name : '',
+            features: Array.isArray(p.features)
+              ? p.features.map((f: any) => ({
+                  name: typeof f.name === 'string' ? f.name : '',
+                  implemented: !!f.implemented
+                }))
+              : []
+          }));
+          this.featureInputs = this.products.map(() => '');
+        }
+      }
+    } catch {
+      this.products = [];
+      this.featureInputs = [];
+    }
+  }
+
   addProduct(): void {
     if (!this.newProductName.trim()) return;
     this.products.push({ name: this.newProductName.trim(), features: [] });
     this.featureInputs.push('');
     this.newProductName = '';
+    this.saveToLocalStorage();
   }
 
-  // Remove a product and its input field
   removeProduct(index: number): void {
     this.products.splice(index, 1);
     this.featureInputs.splice(index, 1);
+    this.saveToLocalStorage();
   }
 
-  // Add a feature to a product
   addFeature(productIndex: number): void {
     const input: string = this.featureInputs[productIndex];
     if (!input || !input.trim()) return;
     this.products[productIndex].features.push({ name: input.trim(), implemented: false });
     this.featureInputs[productIndex] = '';
+    this.saveToLocalStorage();
   }
 
-  // Remove a feature from a product
   removeFeature(productIndex: number, featureIndex: number): void {
     this.products[productIndex].features.splice(featureIndex, 1);
+    this.saveToLocalStorage();
   }
 
-  // Toggle feature implemented status (strike-through)
   toggleFeature(productIndex: number, featureIndex: number): void {
     const feature: ProductFeature = this.products[productIndex].features[featureIndex];
     feature.implemented = !feature.implemented;
+    this.saveToLocalStorage();
   }
 
-  // Download all product data as .txt file
   downloadData(): void {
     const data: string = JSON.stringify(this.products);
     const blob: Blob = new Blob([data], { type: 'text/plain' });
@@ -228,7 +265,6 @@ export class ProductIdeasLoggerComponent extends CommonExternalComponent {
     window.URL.revokeObjectURL(url);
   }
 
-  // Upload product data from .txt file
   uploadData(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;
@@ -249,6 +285,7 @@ export class ProductIdeasLoggerComponent extends CommonExternalComponent {
               : []
           }));
           this.featureInputs = this.products.map(() => '');
+          this.saveToLocalStorage();
         }
       } catch (e) {
         alert('Invalid file format.');
