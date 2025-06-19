@@ -1,13 +1,14 @@
-import { Component } from '@angular/core';
+import { Component, AfterViewInit } from '@angular/core';
 import { CommonExternalComponent } from '../common-external/common-external.component';
 
 /*
   Features:
-  - Interactive menu using Bootstrap accordion for category toggling
+  - Interactive cafe menu using Bootstrap accordion (expand/collapse sections)
   - Sections: Smoothies, Pancakes (Breakfast), Roti Bread, Paneer Delicacies, Seafood (Lunch & Dinner)
-  - Each dish: name, cuisine/type, price (INR), description
-  - Attractive look with Bootstrap cards, badges, and responsive grid
-  - Fully inline HTML and CSS, strict type checking
+  - Each dish: name, type/cuisine, price (INR), description
+  - Attractive look with Bootstrap cards, badges, responsive grid
+  - Accordion expand/collapse enabled via Bootstrap JS initialization in ngAfterViewInit
+  - Strict typing for all variables
 */
 
 interface CafeMenuItem {
@@ -26,14 +27,15 @@ interface CafeMenuItem {
         <!-- Smoothies -->
         <div class="accordion-item">
           <h2 class="accordion-header" id="headingSmoothies">
-            <button class="accordion-button fw-semibold" type="button" data-bs-toggle="collapse"
-              data-bs-target="#collapseSmoothies" aria-expanded="true" aria-controls="collapseSmoothies">
+            <button class="accordion-button fw-semibold" type="button"
+              data-bs-toggle="collapse" data-bs-target="#collapseSmoothies"
+              aria-expanded="true" aria-controls="collapseSmoothies">
               <span class="me-2"><i class="bi bi-cup-straw"></i></span> Smoothies
               <span class="badge bg-info ms-2">{{ smoothies.length }}</span>
             </button>
           </h2>
-          <div id="collapseSmoothies" class="accordion-collapse collapse show" aria-labelledby="headingSmoothies"
-            data-bs-parent="#cafeMenuAccordion">
+          <div id="collapseSmoothies" class="accordion-collapse collapse show"
+            aria-labelledby="headingSmoothies" data-bs-parent="#cafeMenuAccordion">
             <div class="accordion-body">
               <div class="row g-3">
                 <div class="col-md-6" *ngFor="let smoothie of smoothies">
@@ -53,14 +55,15 @@ interface CafeMenuItem {
         <!-- Pancakes (Breakfast) -->
         <div class="accordion-item">
           <h2 class="accordion-header" id="headingPancakes">
-            <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse"
-              data-bs-target="#collapsePancakes" aria-expanded="false" aria-controls="collapsePancakes">
+            <button class="accordion-button collapsed fw-semibold" type="button"
+              data-bs-toggle="collapse" data-bs-target="#collapsePancakes"
+              aria-expanded="false" aria-controls="collapsePancakes">
               <span class="me-2"><i class="bi bi-egg-fried"></i></span> Pancakes (Breakfast)
               <span class="badge bg-warning text-dark ms-2">{{ pancakes.length }}</span>
             </button>
           </h2>
-          <div id="collapsePancakes" class="accordion-collapse collapse" aria-labelledby="headingPancakes"
-            data-bs-parent="#cafeMenuAccordion">
+          <div id="collapsePancakes" class="accordion-collapse collapse"
+            aria-labelledby="headingPancakes" data-bs-parent="#cafeMenuAccordion">
             <div class="accordion-body">
               <div class="row g-3">
                 <div class="col-md-6" *ngFor="let pancake of pancakes">
@@ -80,14 +83,15 @@ interface CafeMenuItem {
         <!-- Roti Bread -->
         <div class="accordion-item">
           <h2 class="accordion-header" id="headingRoti">
-            <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse"
-              data-bs-target="#collapseRoti" aria-expanded="false" aria-controls="collapseRoti">
+            <button class="accordion-button collapsed fw-semibold" type="button"
+              data-bs-toggle="collapse" data-bs-target="#collapseRoti"
+              aria-expanded="false" aria-controls="collapseRoti">
               <span class="me-2"><i class="bi bi-bagel"></i></span> Roti Bread
               <span class="badge bg-success ms-2">{{ rotis.length }}</span>
             </button>
           </h2>
-          <div id="collapseRoti" class="accordion-collapse collapse" aria-labelledby="headingRoti"
-            data-bs-parent="#cafeMenuAccordion">
+          <div id="collapseRoti" class="accordion-collapse collapse"
+            aria-labelledby="headingRoti" data-bs-parent="#cafeMenuAccordion">
             <div class="accordion-body">
               <div class="row g-3">
                 <div class="col-md-6" *ngFor="let roti of rotis">
@@ -107,14 +111,15 @@ interface CafeMenuItem {
         <!-- Paneer Delicacies -->
         <div class="accordion-item">
           <h2 class="accordion-header" id="headingPaneer">
-            <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse"
-              data-bs-target="#collapsePaneer" aria-expanded="false" aria-controls="collapsePaneer">
+            <button class="accordion-button collapsed fw-semibold" type="button"
+              data-bs-toggle="collapse" data-bs-target="#collapsePaneer"
+              aria-expanded="false" aria-controls="collapsePaneer">
               <span class="me-2"><i class="bi bi-cup-hot"></i></span> Paneer Delicacies
               <span class="badge bg-danger ms-2">{{ paneers.length }}</span>
             </button>
           </h2>
-          <div id="collapsePaneer" class="accordion-collapse collapse" aria-labelledby="headingPaneer"
-            data-bs-parent="#cafeMenuAccordion">
+          <div id="collapsePaneer" class="accordion-collapse collapse"
+            aria-labelledby="headingPaneer" data-bs-parent="#cafeMenuAccordion">
             <div class="accordion-body">
               <div class="row g-3">
                 <div class="col-md-6" *ngFor="let paneer of paneers">
@@ -134,14 +139,15 @@ interface CafeMenuItem {
         <!-- Seafood -->
         <div class="accordion-item">
           <h2 class="accordion-header" id="headingSeafood">
-            <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse"
-              data-bs-target="#collapseSeafood" aria-expanded="false" aria-controls="collapseSeafood">
+            <button class="accordion-button collapsed fw-semibold" type="button"
+              data-bs-toggle="collapse" data-bs-target="#collapseSeafood"
+              aria-expanded="false" aria-controls="collapseSeafood">
               <span class="me-2"><i class="bi bi-droplet-half"></i></span> Seafood (Lunch & Dinner)
               <span class="badge bg-primary ms-2">{{ seafoods.length }}</span>
             </button>
           </h2>
-          <div id="collapseSeafood" class="accordion-collapse collapse" aria-labelledby="headingSeafood"
-            data-bs-parent="#cafeMenuAccordion">
+          <div id="collapseSeafood" class="accordion-collapse collapse"
+            aria-labelledby="headingSeafood" data-bs-parent="#cafeMenuAccordion">
             <div class="accordion-body">
               <div class="row g-3">
                 <div class="col-md-6" *ngFor="let seafood of seafoods">
@@ -172,7 +178,7 @@ interface CafeMenuItem {
     }
   `]
 })
-export class RestaurantMenuComponent extends CommonExternalComponent {
+export class RestaurantMenuComponent extends CommonExternalComponent implements AfterViewInit {
   smoothies: ReadonlyArray<CafeMenuItem> = [
     {
       name: 'Berry Blast',
@@ -307,4 +313,16 @@ export class RestaurantMenuComponent extends CommonExternalComponent {
       description: 'Prawns simmered in tangy Goan coconut curry sauce.'
     }
   ];
+
+  ngAfterViewInit(): void {
+    // Ensure Bootstrap JS is available and initialize accordions if needed
+    // This allows the expand/collapse to work even if Angular loads after DOMContentLoaded
+    if ((window as any).bootstrap) {
+      const elements: NodeListOf<Element> = document.querySelectorAll('.accordion');
+      elements.forEach((el: Element) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).bootstrap.Collapse.getOrCreateInstance(el);
+      });
+    }
+  }
 }
