@@ -3,242 +3,308 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
 
 /*
   Features:
-  - Menu sections: Soups, Starters, Main Course, Dessert
-  - Each dish has name, cuisine (Chinese/Thai), price in INR, and description
-  - Responsive layout with clear sectioning
-  - Description shown under each dish
+  - Interactive menu using Bootstrap accordion for category toggling
+  - Sections: Smoothies, Pancakes (Breakfast), Roti Bread, Paneer Delicacies, Seafood (Lunch & Dinner)
+  - Each dish: name, cuisine/type, price (INR), description
+  - Attractive look with Bootstrap cards, badges, and responsive grid
+  - Fully inline HTML and CSS, strict type checking
 */
+
+interface CafeMenuItem {
+  name: string;
+  type: string;
+  price: number;
+  description: string;
+}
 
 @Component({
   selector: 'app-restaurant-menu',
   template: `
-    <div class="menu-container">
-      <h1 class="restaurant-title">Restaurant Menu</h1>
-      <section class="menu-section">
-        <h2>Soups</h2>
-        <ul>
-          <li *ngFor="let soup of soups">
-            <div class="dish-header">
-              <span class="dish">{{ soup.name }}</span>
-              <span class="cuisine">({{ soup.cuisine }})</span>
-              <span class="price">₹{{ soup.price.toFixed(0) }}</span>
+    <div class="container my-4">
+      <h1 class="text-center text-primary mb-4 display-5 fw-bold">Cafe Menu</h1>
+      <div class="accordion" id="cafeMenuAccordion">
+        <!-- Smoothies -->
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="headingSmoothies">
+            <button class="accordion-button fw-semibold" type="button" data-bs-toggle="collapse"
+              data-bs-target="#collapseSmoothies" aria-expanded="true" aria-controls="collapseSmoothies">
+              <span class="me-2"><i class="bi bi-cup-straw"></i></span> Smoothies
+              <span class="badge bg-info ms-2">{{ smoothies.length }}</span>
+            </button>
+          </h2>
+          <div id="collapseSmoothies" class="accordion-collapse collapse show" aria-labelledby="headingSmoothies"
+            data-bs-parent="#cafeMenuAccordion">
+            <div class="accordion-body">
+              <div class="row g-3">
+                <div class="col-md-6" *ngFor="let smoothie of smoothies">
+                  <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                      <h5 class="card-title mb-1 fw-bold text-success">{{ smoothie.name }}</h5>
+                      <span class="badge bg-secondary mb-2">{{ smoothie.type }}</span>
+                      <p class="card-text small mb-2">{{ smoothie.description }}</p>
+                      <span class="fw-bold text-primary fs-5">₹{{ smoothie.price.toFixed(0) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="desc">{{ soup.description }}</div>
-          </li>
-        </ul>
-      </section>
-      <section class="menu-section">
-        <h2>Starters</h2>
-        <ul>
-          <li *ngFor="let starter of starters">
-            <div class="dish-header">
-              <span class="dish">{{ starter.name }}</span>
-              <span class="cuisine">({{ starter.cuisine }})</span>
-              <span class="price">₹{{ starter.price.toFixed(0) }}</span>
+          </div>
+        </div>
+        <!-- Pancakes (Breakfast) -->
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="headingPancakes">
+            <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse"
+              data-bs-target="#collapsePancakes" aria-expanded="false" aria-controls="collapsePancakes">
+              <span class="me-2"><i class="bi bi-egg-fried"></i></span> Pancakes (Breakfast)
+              <span class="badge bg-warning text-dark ms-2">{{ pancakes.length }}</span>
+            </button>
+          </h2>
+          <div id="collapsePancakes" class="accordion-collapse collapse" aria-labelledby="headingPancakes"
+            data-bs-parent="#cafeMenuAccordion">
+            <div class="accordion-body">
+              <div class="row g-3">
+                <div class="col-md-6" *ngFor="let pancake of pancakes">
+                  <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                      <h5 class="card-title mb-1 fw-bold text-warning">{{ pancake.name }}</h5>
+                      <span class="badge bg-light text-dark mb-2">{{ pancake.type }}</span>
+                      <p class="card-text small mb-2">{{ pancake.description }}</p>
+                      <span class="fw-bold text-primary fs-5">₹{{ pancake.price.toFixed(0) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="desc">{{ starter.description }}</div>
-          </li>
-        </ul>
-      </section>
-      <section class="menu-section">
-        <h2>Main Course</h2>
-        <ul>
-          <li *ngFor="let main of mains">
-            <div class="dish-header">
-              <span class="dish">{{ main.name }}</span>
-              <span class="cuisine">({{ main.cuisine }})</span>
-              <span class="price">₹{{ main.price.toFixed(0) }}</span>
+          </div>
+        </div>
+        <!-- Roti Bread -->
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="headingRoti">
+            <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse"
+              data-bs-target="#collapseRoti" aria-expanded="false" aria-controls="collapseRoti">
+              <span class="me-2"><i class="bi bi-bagel"></i></span> Roti Bread
+              <span class="badge bg-success ms-2">{{ rotis.length }}</span>
+            </button>
+          </h2>
+          <div id="collapseRoti" class="accordion-collapse collapse" aria-labelledby="headingRoti"
+            data-bs-parent="#cafeMenuAccordion">
+            <div class="accordion-body">
+              <div class="row g-3">
+                <div class="col-md-6" *ngFor="let roti of rotis">
+                  <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                      <h5 class="card-title mb-1 fw-bold text-success">{{ roti.name }}</h5>
+                      <span class="badge bg-secondary mb-2">{{ roti.type }}</span>
+                      <p class="card-text small mb-2">{{ roti.description }}</p>
+                      <span class="fw-bold text-primary fs-5">₹{{ roti.price.toFixed(0) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="desc">{{ main.description }}</div>
-          </li>
-        </ul>
-      </section>
-      <section class="menu-section">
-        <h2>Dessert</h2>
-        <ul>
-          <li *ngFor="let dessert of desserts">
-            <div class="dish-header">
-              <span class="dish">{{ dessert.name }}</span>
-              <span class="cuisine">({{ dessert.cuisine }})</span>
-              <span class="price">₹{{ dessert.price.toFixed(0) }}</span>
+          </div>
+        </div>
+        <!-- Paneer Delicacies -->
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="headingPaneer">
+            <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse"
+              data-bs-target="#collapsePaneer" aria-expanded="false" aria-controls="collapsePaneer">
+              <span class="me-2"><i class="bi bi-cup-hot"></i></span> Paneer Delicacies
+              <span class="badge bg-danger ms-2">{{ paneers.length }}</span>
+            </button>
+          </h2>
+          <div id="collapsePaneer" class="accordion-collapse collapse" aria-labelledby="headingPaneer"
+            data-bs-parent="#cafeMenuAccordion">
+            <div class="accordion-body">
+              <div class="row g-3">
+                <div class="col-md-6" *ngFor="let paneer of paneers">
+                  <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                      <h5 class="card-title mb-1 fw-bold text-danger">{{ paneer.name }}</h5>
+                      <span class="badge bg-light text-dark mb-2">{{ paneer.type }}</span>
+                      <p class="card-text small mb-2">{{ paneer.description }}</p>
+                      <span class="fw-bold text-primary fs-5">₹{{ paneer.price.toFixed(0) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="desc">{{ dessert.description }}</div>
-          </li>
-        </ul>
-      </section>
+          </div>
+        </div>
+        <!-- Seafood -->
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="headingSeafood">
+            <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse"
+              data-bs-target="#collapseSeafood" aria-expanded="false" aria-controls="collapseSeafood">
+              <span class="me-2"><i class="bi bi-droplet-half"></i></span> Seafood (Lunch & Dinner)
+              <span class="badge bg-primary ms-2">{{ seafoods.length }}</span>
+            </button>
+          </h2>
+          <div id="collapseSeafood" class="accordion-collapse collapse" aria-labelledby="headingSeafood"
+            data-bs-parent="#cafeMenuAccordion">
+            <div class="accordion-body">
+              <div class="row g-3">
+                <div class="col-md-6" *ngFor="let seafood of seafoods">
+                  <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                      <h5 class="card-title mb-1 fw-bold text-primary">{{ seafood.name }}</h5>
+                      <span class="badge bg-info text-dark mb-2">{{ seafood.type }}</span>
+                      <p class="card-text small mb-2">{{ seafood.description }}</p>
+                      <span class="fw-bold text-primary fs-5">₹{{ seafood.price.toFixed(0) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mt-5 text-muted text-center small">* All prices inclusive of taxes</div>
     </div>
   `,
   styles: [`
-    .menu-container {
-      max-width: 600px;
-      margin: 2rem auto;
-      padding: 2rem;
-      background: #fffdfa;
-      border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.07);
-      font-family: 'Segoe UI', sans-serif;
-    }
-    .restaurant-title {
-      text-align: center;
-      color: #b23c17;
-      letter-spacing: 2px;
-      margin-bottom: 2rem;
-    }
-    .menu-section {
-      margin-bottom: 2rem;
-    }
-    .menu-section h2 {
-      color: #267373;
-      border-bottom: 2px solid #e3e3e3;
-      padding-bottom: 0.5rem;
-      margin-bottom: 1rem;
-    }
-    ul {
-      list-style: none;
-      padding-left: 0;
-    }
-    li {
-      margin-bottom: 1.25rem;
-    }
-    .dish-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 1.05rem;
-    }
-    .dish {
-      font-weight: 500;
-      flex: 2;
-    }
-    .cuisine {
-      color: #888;
-      font-size: 0.95em;
-      flex: 1;
-      text-align: right;
-      margin-right: 1rem;
-    }
-    .price {
-      color: #b23c17;
-      font-weight: bold;
-      min-width: 60px;
-      text-align: right;
-    }
-    .desc {
-      font-size: 0.98em;
-      color: #555;
-      margin-top: 0.25rem;
-      margin-left: 0.15rem;
-      line-height: 1.5;
-    }
-    @media (max-width: 500px) {
-      .menu-container {
-        padding: 1rem;
-      }
-      .dish-header {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      .cuisine, .price {
-        text-align: left;
-        margin-right: 0;
-      }
+    .accordion-button { font-size: 1.15rem; }
+    .card { transition: box-shadow .2s; }
+    .card:hover { box-shadow: 0 8px 24px rgba(44,62,80,.08); }
+    .badge { font-size: 0.92em; }
+    @media (max-width: 767px) {
+      .row.g-3 > [class^='col-'] { flex: 0 0 100%; max-width: 100%; }
     }
   `]
 })
 export class RestaurantMenuComponent extends CommonExternalComponent {
-  soups: ReadonlyArray<{ name: string; cuisine: 'Chinese' | 'Thai'; price: number; description: string }> = [
+  smoothies: ReadonlyArray<CafeMenuItem> = [
     {
-      name: 'Hot & Sour Soup',
-      cuisine: 'Chinese',
+      name: 'Berry Blast',
+      type: 'Mixed Berries',
       price: 180,
-      description: 'A spicy and tangy soup made with fresh vegetables, mushrooms, tofu, and a blend of Chinese spices.'
+      description: 'A refreshing blend of strawberries, blueberries, raspberries, yogurt, and honey.'
     },
     {
-      name: 'Tom Yum Soup',
-      cuisine: 'Thai',
-      price: 210,
-      description: 'Classic Thai soup with lemongrass, kaffir lime leaves, galangal, mushrooms, and chili, served with your choice of vegetables or chicken.'
-    },
-    {
-      name: 'Sweet Corn Soup',
-      cuisine: 'Chinese',
+      name: 'Tropical Sunshine',
+      type: 'Mango Pineapple',
       price: 170,
-      description: 'Creamy corn soup cooked with sweet corn kernels, carrots, and spring onions in a light broth.'
+      description: 'Mango, pineapple, banana, coconut water, and a hint of lime.'
     },
     {
-      name: 'Tom Kha Gai',
-      cuisine: 'Thai',
-      price: 230,
-      description: 'Traditional coconut milk-based soup with chicken, mushrooms, lemongrass, galangal, and fresh herbs.'
+      name: 'Green Detox',
+      type: 'Spinach Kiwi',
+      price: 160,
+      description: 'Spinach, kiwi, green apple, cucumber, mint, and lemon juice.'
+    },
+    {
+      name: 'Choco Banana',
+      type: 'Banana Cocoa',
+      price: 150,
+      description: 'Banana, cocoa powder, almond milk, dates, and chia seeds.'
     }
   ];
 
-  starters: ReadonlyArray<{ name: string; cuisine: 'Chinese' | 'Thai'; price: number; description: string }> = [
+  pancakes: ReadonlyArray<CafeMenuItem> = [
     {
-      name: 'Spring Rolls',
-      cuisine: 'Chinese',
-      price: 240,
-      description: 'Crispy rolls stuffed with mixed vegetables, served with sweet chili dipping sauce.'
+      name: 'Classic Buttermilk Pancakes',
+      type: 'Breakfast',
+      price: 140,
+      description: 'Fluffy pancakes served with maple syrup and whipped butter.'
     },
     {
-      name: 'Chicken Satay',
-      cuisine: 'Thai',
-      price: 290,
-      description: 'Grilled marinated chicken skewers, served with creamy peanut sauce and cucumber relish.'
+      name: 'Blueberry Pancakes',
+      type: 'Breakfast',
+      price: 170,
+      description: 'Pancakes loaded with fresh blueberries, topped with berry compote.'
     },
     {
-      name: 'Crispy Wontons',
-      cuisine: 'Chinese',
+      name: 'Chocolate Chip Pancakes',
+      type: 'Breakfast',
+      price: 160,
+      description: 'Buttermilk pancakes studded with chocolate chips, drizzled with chocolate sauce.'
+    },
+    {
+      name: 'Nutella Banana Pancakes',
+      type: 'Breakfast',
+      price: 180,
+      description: 'Layered with Nutella and banana slices, finished with powdered sugar.'
+    }
+  ];
+
+  rotis: ReadonlyArray<CafeMenuItem> = [
+    {
+      name: 'Tandoori Roti',
+      type: 'Indian Bread',
+      price: 35,
+      description: 'Whole wheat flatbread baked in a clay oven.'
+    },
+    {
+      name: 'Butter Naan',
+      type: 'Indian Bread',
+      price: 45,
+      description: 'Soft leavened bread brushed with butter.'
+    },
+    {
+      name: 'Laccha Paratha',
+      type: 'Indian Bread',
+      price: 50,
+      description: 'Multi-layered flaky paratha cooked on griddle.'
+    },
+    {
+      name: 'Garlic Naan',
+      type: 'Indian Bread',
+      price: 55,
+      description: 'Naan topped with garlic and coriander.'
+    }
+  ];
+
+  paneers: ReadonlyArray<CafeMenuItem> = [
+    {
+      name: 'Paneer Butter Masala',
+      type: 'North Indian',
       price: 220,
-      description: 'Golden-fried wontons filled with spiced chicken or vegetables, accompanied by tangy sauce.'
+      description: 'Cottage cheese cubes simmered in rich tomato-butter gravy with spices.'
     },
     {
-      name: 'Thai Fish Cakes',
-      cuisine: 'Thai',
-      price: 310,
-      description: 'Minced fish blended with Thai herbs and spices, deep-fried and served with sweet chili sauce.'
-    }
-  ];
-
-  mains: ReadonlyArray<{ name: string; cuisine: 'Chinese' | 'Thai'; price: number; description: string }> = [
-    {
-      name: 'Kung Pao Chicken',
-      cuisine: 'Chinese',
-      price: 430,
-      description: 'Stir-fried chicken tossed with bell peppers, peanuts, and dried chilies in a savory sauce.'
-    },
-    {
-      name: 'Pad Thai Noodles',
-      cuisine: 'Thai',
-      price: 390,
-      description: 'Stir-fried rice noodles with tofu, egg, bean sprouts, peanuts, and your choice of vegetables or chicken.'
-    },
-    {
-      name: 'Schezwan Fried Rice',
-      cuisine: 'Chinese',
-      price: 340,
-      description: 'Spicy fried rice with vegetables, Schezwan sauce, and optional chicken or paneer.'
-    },
-    {
-      name: 'Green Curry with Jasmine Rice',
-      cuisine: 'Thai',
-      price: 470,
-      description: 'Fragrant green curry with coconut milk, seasonal vegetables, basil, and steamed jasmine rice.'
-    }
-  ];
-
-  desserts: ReadonlyArray<{ name: string; cuisine: 'Chinese' | 'Thai'; price: number; description: string }> = [
-    {
-      name: 'Darsaan with Ice Cream',
-      cuisine: 'Chinese',
-      price: 190,
-      description: 'Crispy honey-glazed flat noodles topped with vanilla ice cream and sesame seeds.'
-    },
-    {
-      name: 'Mango Sticky Rice',
-      cuisine: 'Thai',
+      name: 'Palak Paneer',
+      type: 'North Indian',
       price: 210,
-      description: 'Traditional Thai dessert of sweet sticky rice served with ripe mango slices and coconut cream.'
+      description: 'Paneer cooked in creamy spinach sauce, mildly spiced.'
+    },
+    {
+      name: 'Paneer Tikka Masala',
+      type: 'Tandoor Special',
+      price: 240,
+      description: 'Grilled paneer tikka in spicy onion-tomato curry.'
+    },
+    {
+      name: 'Chili Paneer',
+      type: 'Indo-Chinese',
+      price: 200,
+      description: 'Paneer tossed with bell peppers, onions, and chili sauce.'
+    }
+  ];
+
+  seafoods: ReadonlyArray<CafeMenuItem> = [
+    {
+      name: 'Fish Curry',
+      type: 'Coastal',
+      price: 320,
+      description: 'Fresh fish cooked in traditional coconut-based curry with regional spices.'
+    },
+    {
+      name: 'Prawn Masala',
+      type: 'South Indian',
+      price: 350,
+      description: 'Juicy prawns sautéed in spicy onion-tomato masala.'
+    },
+    {
+      name: 'Lemon Garlic Grilled Fish',
+      type: 'Continental',
+      price: 370,
+      description: 'Grilled fish fillet marinated with lemon, garlic, and herbs.'
+    },
+    {
+      name: 'Goan Prawn Curry',
+      type: 'Goan',
+      price: 360,
+      description: 'Prawns simmered in tangy Goan coconut curry sauce.'
     }
   ];
 }
