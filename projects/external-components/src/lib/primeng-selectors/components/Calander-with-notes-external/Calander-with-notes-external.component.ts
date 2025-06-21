@@ -5,6 +5,7 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
   Features:
   - Monthly calendar view with Bootstrap 5 styling.
   - Add, edit, and delete multiple notes for each date.
+  - Uses Bootstrap Icons for edit (pencil) and delete (trash).
   - Select a date to view its note(s) in a section below the calendar.
   - Inline note editing with save/cancel options for each note.
   - Highlights days with one or more notes.
@@ -61,8 +62,12 @@ interface CalendarNote {
                       <div class="w-100 d-flex justify-content-between align-items-center">
                         <span>{{ note.text }}</span>
                         <div>
-                          <button class="btn btn-sm btn-outline-secondary me-2" (click)="editNote(note)">Edit</button>
-                          <button class="btn btn-sm btn-outline-danger" (click)="deleteNote(note)">Delete</button>
+                          <button class="btn btn-sm btn-outline-secondary me-2" (click)="editNote(note)" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                          <button class="btn btn-sm btn-outline-danger" (click)="deleteNote(note)" title="Delete">
+                            <i class="bi bi-trash"></i>
+                          </button>
                         </div>
                       </div>
                     </div>
