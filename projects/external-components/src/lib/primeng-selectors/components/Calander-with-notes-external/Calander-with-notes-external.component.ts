@@ -4,13 +4,15 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
 /*
   Features:
   - Monthly calendar view with Bootstrap 5 styling.
-  - Add, edit, and delete notes for each date.
+  - Add, edit, and delete multiple notes for each date.
   - Select a date to view its note(s) in a section below the calendar.
-  - Inline note editing with save/cancel options.
-  - Highlights days with notes.
+  - Inline note editing with save/cancel options for each note.
+  - Highlights days with one or more notes.
+  - All data is persisted in localStorage by default.
 */
 
 interface CalendarNote {
+  id: string; // unique ID for each note
   date: string; // 'YYYY-MM-DD'
   text: string;
   isEditing?: boolean;
@@ -34,42 +36,62 @@ interface CalendarNote {
         <ng-container *ngFor="let day of daysInMonth">
           <div 
             class="border rounded position-relative bg-white calendar-cell-hover"
-            [class.bg-info-subtle]="hasNote(day)"
+            [class.bg-info-subtle]="hasNotes(day)"
             [class.border-primary]="selectedDay === day"
             style="min-height:52px; cursor:pointer;"
             (click)="selectDate(day)">
             <span class="fw-semibold">{{ day }}</span>
-            <span *ngIf="hasNote(day)" class="position-absolute top-0 end-0 badge bg-info p-1 mt-1 me-1"></span>
+            <span *ngIf="hasNotes(day)" class="position-absolute top-0 end-0 badge bg-info p-1 mt-1 me-1"></span>
           </div>
         </ng-container>
       </div>
 
-      <!-- Note input/add/edit for selected date -->
+      <!-- Notes section for selected date -->
       <div *ngIf="selectedDay !== null" class="mt-3">
         <div class="card shadow-sm">
           <div class="card-body">
             <h6 class="card-title mb-3">
               Notes for {{ months[currentMonth] }} {{ selectedDay }}, {{ currentYear }}
             </h6>
-            <ng-container *ngIf="getNote(selectedDay!) as note; else addForm">
-              <div *ngIf="!note.isEditing; else editForm">
-                <p class="mb-2">{{ note.text }}</p>
-                <button class="btn btn-sm btn-outline-secondary me-2" (click)="editNote(selectedDay!)">Edit</button>
-                <button class="btn btn-sm btn-outline-danger" (click)="deleteNote(selectedDay!)">Delete</button>
+            <ng-container *ngIf="getNotes(selectedDay!) as notesForDay">
+              <div *ngIf="notesForDay.length > 0; else addForm">
+                <ul class="list-group mb-3">
+                  <li *ngFor="let note of notesForDay" class="list-group-item d-flex flex-column align-items-start">
+                    <div *ngIf="!note.isEditing; else editForm">
+                      <div class="w-100 d-flex justify-content-between align-items-center">
+                        <span>{{ note.text }}</span>
+                        <div>
+                          <button class="btn btn-sm btn-outline-secondary me-2" (click)="editNote(note)">Edit</button>
+                          <button class="btn btn-sm btn-outline-danger" (click)="deleteNote(note)">Delete</button>
+                        </div>
+                      </div>
+                    </div>
+                    <ng-template #editForm>
+                      <textarea [(ngModel)]="note.tempText" class="form-control mb-2" rows="2"></textarea>
+                      <div>
+                        <button class="btn btn-sm btn-primary me-2" (click)="saveNote(note)">Save</button>
+                        <button class="btn btn-sm btn-secondary" (click)="cancelEdit(note)">Cancel</button>
+                      </div>
+                    </ng-template>
+                  </li>
+                </ul>
+                <div *ngIf="addingNoteDay === selectedDay; else showAddBtn">
+                  <textarea [(ngModel)]="newNoteText" class="form-control mb-2" rows="2"></textarea>
+                  <button class="btn btn-sm btn-success me-2" (click)="addNote(selectedDay!)">Save</button>
+                  <button class="btn btn-sm btn-secondary" (click)="cancelAddNote()">Cancel</button>
+                </div>
+                <ng-template #showAddBtn>
+                  <button class="btn btn-sm btn-outline-success" (click)="startAddNote(selectedDay!)">Add Note</button>
+                </ng-template>
               </div>
-              <ng-template #editForm>
-                <textarea [(ngModel)]="note.tempText" class="form-control mb-2" rows="2"></textarea>
-                <button class="btn btn-sm btn-primary me-2" (click)="saveNote(selectedDay!)">Save</button>
-                <button class="btn btn-sm btn-secondary" (click)="cancelEdit(selectedDay!)">Cancel</button>
-              </ng-template>
             </ng-container>
             <ng-template #addForm>
-              <div *ngIf="addingNoteDay === selectedDay; else showAddBtn">
+              <div *ngIf="addingNoteDay === selectedDay; else showAddBtn2">
                 <textarea [(ngModel)]="newNoteText" class="form-control mb-2" rows="2"></textarea>
                 <button class="btn btn-sm btn-success me-2" (click)="addNote(selectedDay!)">Save</button>
                 <button class="btn btn-sm btn-secondary" (click)="cancelAddNote()">Cancel</button>
               </div>
-              <ng-template #showAddBtn>
+              <ng-template #showAddBtn2>
                 <button class="btn btn-sm btn-outline-success" (click)="startAddNote(selectedDay!)">Add Note</button>
               </ng-template>
             </ng-template>
@@ -105,6 +127,13 @@ export class CalanderWithNotesComponent extends CommonExternalComponent {
   newNoteText: string = '';
   selectedDay: number | null = null;
 
+  private storageKey: string = 'calander-with-notes-data';
+
+  constructor() {
+    super();
+    this.loadNotes();
+  }
+
   get daysInMonth(): number[] {
     const numDays: number = new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
     return Array.from({ length: numDays }, (_, i) => i + 1);
@@ -121,12 +150,12 @@ export class CalanderWithNotesComponent extends CommonExternalComponent {
     return `${this.currentYear}-${mm}-${dd}`;
   }
 
-  hasNote(day: number): boolean {
+  hasNotes(day: number): boolean {
     return this.notes.some((n: CalendarNote) => n.date === this.formatDate(day));
   }
 
-  getNote(day: number): CalendarNote | undefined {
-    return this.notes.find((n: CalendarNote) => n.date === this.formatDate(day));
+  getNotes(day: number): CalendarNote[] {
+    return this.notes.filter((n: CalendarNote) => n.date === this.formatDate(day));
   }
 
   selectDate(day: number): void {
@@ -134,11 +163,13 @@ export class CalanderWithNotesComponent extends CommonExternalComponent {
     this.addingNoteDay = null;
     this.newNoteText = '';
     // Remove edit mode if user selects another date
-    const note = this.getNote(day);
-    if (note && note.isEditing) {
-      note.isEditing = false;
-      delete note.tempText;
-    }
+    const notesForDay: CalendarNote[] = this.getNotes(day);
+    notesForDay.forEach((note: CalendarNote) => {
+      if (note.isEditing) {
+        note.isEditing = false;
+        delete note.tempText;
+      }
+    });
   }
 
   startAddNote(day: number): void {
@@ -149,9 +180,11 @@ export class CalanderWithNotesComponent extends CommonExternalComponent {
   addNote(day: number): void {
     if (this.newNoteText.trim()) {
       this.notes.push({
+        id: this.generateId(),
         date: this.formatDate(day),
         text: this.newNoteText.trim()
       });
+      this.saveNotes();
     }
     this.addingNoteDay = null;
     this.newNoteText = '';
@@ -162,35 +195,32 @@ export class CalanderWithNotesComponent extends CommonExternalComponent {
     this.newNoteText = '';
   }
 
-  editNote(day: number): void {
-    const note: CalendarNote | undefined = this.getNote(day);
-    if (note) {
-      note.isEditing = true;
-      note.tempText = note.text;
-    }
+  editNote(note: CalendarNote): void {
+    note.isEditing = true;
+    note.tempText = note.text;
   }
 
-  saveNote(day: number): void {
-    const note: CalendarNote | undefined = this.getNote(day);
-    if (note && typeof note.tempText === 'string') {
+  saveNote(note: CalendarNote): void {
+    if (typeof note.tempText === 'string') {
       note.text = note.tempText.trim();
       note.isEditing = false;
       delete note.tempText;
+      this.saveNotes();
     }
   }
 
-  cancelEdit(day: number): void {
-    const note: CalendarNote | undefined = this.getNote(day);
-    if (note) {
-      note.isEditing = false;
-      delete note.tempText;
-    }
+  cancelEdit(note: CalendarNote): void {
+    note.isEditing = false;
+    delete note.tempText;
   }
 
-  deleteNote(day: number): void {
-    const dateStr: string = this.formatDate(day);
-    this.notes = this.notes.filter((n: CalendarNote) => n.date !== dateStr);
-    this.selectedDay = null;
+  deleteNote(note: CalendarNote): void {
+    this.notes = this.notes.filter((n: CalendarNote) => n.id !== note.id);
+    this.saveNotes();
+    // If no notes left for the selected day, deselect
+    if (this.selectedDay !== null && this.getNotes(this.selectedDay).length === 0) {
+      this.selectedDay = null;
+    }
   }
 
   prevMonth(): void {
@@ -213,5 +243,20 @@ export class CalanderWithNotesComponent extends CommonExternalComponent {
     }
     this.addingNoteDay = null;
     this.selectedDay = null;
+  }
+
+  // Unique ID generator for notes
+  private generateId(): string {
+    return Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+  }
+
+  // Local Storage Persistence
+  private saveNotes(): void {
+    localStorage.setItem(this.storageKey, JSON.stringify(this.notes));
+  }
+
+  private loadNotes(): void {
+    const raw: string | null = localStorage.getItem(this.storageKey);
+    this.notes = raw ? JSON.parse(raw) : [];
   }
 }
