@@ -1,7 +1,14 @@
-import { Component, OnInit } from '@angular/core';
+// DoctorsClinicComponent - Angular 18
+// Features: 
+// - Add, search, and manage patients and appointments.
+// - WhatsApp appointment reminders.
+// - Download/upload all clinic data as a .txt file for backup/restore (header buttons).
+// - Data stored in local storage by default. 
+// - Modern Bootstrap 5 styling & PrimeIcons v7 icons.
+
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CommonExternalComponent } from '../common-external/common-external.component';
-import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 interface Patient {
   key?: string;
@@ -21,16 +28,32 @@ interface Appointment {
   reason: string;
 }
 
-interface ClinicDB extends DBSchema {
-  patients: {
-    key: string;
-    value: Patient;
-  };
-}
-
 @Component({
   selector: 'app-doctors-clinic',
   template: `
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1 class="mb-0">
+        <i class="pi pi-user-md text-primary me-2"></i>
+        Doctors Clinic
+      </h1>
+      <div>
+        <!-- Download Button -->
+        <button type="button"
+          class="btn btn-outline-primary me-2"
+          (click)="downloadData()"
+          title="Download Data">
+          <i class="pi pi-download me-1"></i> Download
+        </button>
+        <!-- Upload Button -->
+        <label class="btn btn-outline-secondary mb-0" title="Upload Data">
+          <i class="pi pi-upload me-1"></i> Upload
+          <input type="file" accept=".txt"
+            style="display:none"
+            (change)="uploadData($event)" />
+        </label>
+      </div>
+    </div>
+
     <form [formGroup]="patientForm" (ngSubmit)="addPatient()" class="clinic-form card shadow-sm p-4 mb-4">
       <h2 class="mb-3">Add New Patient</h2>
       <div class="row g-3">
@@ -107,7 +130,9 @@ interface ClinicDB extends DBSchema {
           <span>
             {{ patient.name }} <small class="text-muted" *ngIf="patient.dob">({{ patient.dob | date:'mediumDate' }})</small>
           </span>
-          <button (click)="selectPatient(getOriginalIndex(idx))" class="btn btn-outline-success btn-sm">Set Appointment</button>
+          <button (click)="selectPatient(getOriginalIndex(idx))" class="btn btn-outline-success btn-sm">
+            <i class="pi pi-calendar-plus me-1"></i> Set Appointment
+          </button>
         </li>
       </ul>
     </div>
@@ -132,8 +157,12 @@ interface ClinicDB extends DBSchema {
         </div>
       </div>
       <div class="mt-3">
-        <button type="submit" [disabled]="!appointmentForm.valid" class="btn btn-success me-2">Add Appointment</button>
-        <button type="button" (click)="cancelAppointment()" class="btn btn-secondary">Cancel</button>
+        <button type="submit" [disabled]="!appointmentForm.valid" class="btn btn-success me-2">
+          <i class="pi pi-plus-circle me-1"></i> Add Appointment
+        </button>
+        <button type="button" (click)="cancelAppointment()" class="btn btn-secondary">
+          <i class="pi pi-times me-1"></i> Cancel
+        </button>
       </div>
     </form>
 
@@ -162,7 +191,7 @@ interface ClinicDB extends DBSchema {
                   (click)="sendWhatsAppReminder(item.patient, item.appointment)"
                   title="Send WhatsApp Reminder"
                   class="btn btn-outline-success btn-sm"
-                >Send WhatsApp</button>
+                ><i class="pi pi-whatsapp"></i> Send WhatsApp</button>
               </td>
             </tr>
           </tbody>
@@ -186,13 +215,11 @@ interface ClinicDB extends DBSchema {
       opacity: 1 !important;
       cursor: not-allowed;
     }
-    `,
+    h1 .pi { font-size: 1.5rem; vertical-align: -0.25em;}
+    `
   ],
 })
-export class DoctorsClinicComponent
-  extends CommonExternalComponent
-  implements OnInit
-{
+export class DoctorsClinicComponent extends CommonExternalComponent implements OnInit {
   patientForm: FormGroup;
   appointmentForm: FormGroup;
   patients: Patient[] = [];
@@ -200,9 +227,11 @@ export class DoctorsClinicComponent
   searchTerm: string = '';
   filteredPatients: Patient[] = [];
   private filteredPatientIndices: number[] = [];
-  private db!: IDBPDatabase<ClinicDB>;
 
-  constructor(private fb: FormBuilder) {
+  constructor(
+    private fb: FormBuilder,
+    private cdr: ChangeDetectorRef
+  ) {
     super();
     this.patientForm = this.fb.group({
       name: ['', Validators.required],
@@ -222,67 +251,46 @@ export class DoctorsClinicComponent
     });
   }
 
-  async ngOnInit(): Promise<void> {
-    await this.initDB();
-    await this.loadPatientsFromDB();
+  ngOnInit(): void {
+    this.loadPatientsFromLocalStorage();
 
-    this.patientForm
-      .get('sameAsPhone')
-      ?.valueChanges.subscribe((checked: boolean) => {
-        if (checked) {
-          const phoneValue: string = this.patientForm.get('phone')?.value || '';
-          this.patientForm.get('whatsapp')?.setValue(phoneValue);
-          this.patientForm.get('whatsapp')?.disable();
-        } else {
-          this.patientForm.get('whatsapp')?.enable();
-        }
-      });
-
-    this.patientForm
-      .get('phone')
-      ?.valueChanges.subscribe((phoneValue: string) => {
-        if (this.patientForm.get('sameAsPhone')?.value) {
-          this.patientForm.get('whatsapp')?.setValue(phoneValue || '');
-        }
-      });
-
-    this.updateFilteredPatients();
-  }
-
-  private async initDB(): Promise<void> {
-    this.db = await openDB<ClinicDB>('doctors-clinic-db', 1, {
-      upgrade(db: IDBPDatabase<ClinicDB>) {
-        if (!db.objectStoreNames.contains('patients')) {
-          db.createObjectStore('patients', { keyPath: 'key' });
-        }
-      },
+    this.patientForm.get('sameAsPhone')?.valueChanges.subscribe((checked: boolean) => {
+      if (checked) {
+        const phoneValue: string = this.patientForm.get('phone')?.value || '';
+        this.patientForm.get('whatsapp')?.setValue(phoneValue);
+        this.patientForm.get('whatsapp')?.disable();
+      } else {
+        this.patientForm.get('whatsapp')?.enable();
+      }
     });
-  }
 
-  private getPatientKey(name: string, whatsapp: string): string {
-    return `${name.trim().toLowerCase()}_${whatsapp.trim()}`;
-  }
+    this.patientForm.get('phone')?.valueChanges.subscribe((phoneValue: string) => {
+      if (this.patientForm.get('sameAsPhone')?.value) {
+        this.patientForm.get('whatsapp')?.setValue(phoneValue || '');
+      }
+    });
 
-  private async loadPatientsFromDB(): Promise<void> {
-    const tx = this.db.transaction('patients', 'readonly');
-    const store = tx.objectStore('patients');
-    const allPatients: Patient[] = [];
-    let cursor = await store.openCursor();
-    while (cursor) {
-      const patient = { ...cursor.value };
-      delete (patient as any).key;
-      allPatients.push(patient);
-      cursor = await cursor.continue();
-    }
-    this.patients = allPatients;
     this.updateFilteredPatients();
   }
 
-  async addPatient(): Promise<void> {
-    if (
-      this.patientForm.get('name')?.value &&
-      this.patientForm.get('whatsapp')?.value
-    ) {
+  // --- Local Storage Methods ---
+  private getStorageKey(): string {
+    return 'doctors-clinic-data-v1';
+  }
+
+  private savePatientsToLocalStorage(): void {
+    window.localStorage.setItem(this.getStorageKey(), JSON.stringify(this.patients));
+  }
+
+  private loadPatientsFromLocalStorage(): void {
+    const data: string | null = window.localStorage.getItem(this.getStorageKey());
+    this.patients = data ? JSON.parse(data) : [];
+    this.updateFilteredPatients();
+  }
+
+  // --- Patient CRUD ---
+  addPatient(): void {
+    if (this.patientForm.get('name')?.value && this.patientForm.get('whatsapp')?.value) {
       const formValue = this.patientForm.getRawValue();
       const patient: Patient = {
         name: formValue.name,
@@ -294,9 +302,17 @@ export class DoctorsClinicComponent
         address: formValue.address || undefined,
         appointments: [],
       };
-      const key = this.getPatientKey(patient.name, patient.whatsapp);
-      await this.db.put('patients', { ...patient, key });
-      await this.loadPatientsFromDB();
+      // Uniqueness check
+      const exists = this.patients.some(
+        (p: Patient) =>
+          p.name.trim().toLowerCase() === patient.name.trim().toLowerCase() &&
+          p.whatsapp.trim() === patient.whatsapp.trim()
+      );
+      if (!exists) {
+        this.patients.push(patient);
+        this.savePatientsToLocalStorage();
+        this.updateFilteredPatients();
+      }
       this.patientForm.reset({ countryCode: '91' });
       this.patientForm.get('whatsapp')?.enable();
     }
@@ -312,38 +328,26 @@ export class DoctorsClinicComponent
     this.appointmentForm.reset();
   }
 
-  async addAppointment(): Promise<void> {
+  addAppointment(): void {
     if (this.selectedPatientIdx !== null && this.appointmentForm.valid) {
-      const appointment: Appointment = {
-        ...this.appointmentForm.value,
-      };
-      const patient = this.patients[this.selectedPatientIdx];
-      patient.appointments.push(appointment);
-      const key = this.getPatientKey(patient.name, patient.whatsapp);
-      await this.db.put('patients', { ...patient, key });
-      await this.loadPatientsFromDB();
+      const appointment: Appointment = { ...this.appointmentForm.value };
+      this.patients[this.selectedPatientIdx].appointments.push(appointment);
+      this.savePatientsToLocalStorage();
+      this.updateFilteredPatients();
       this.selectedPatientIdx = null;
       this.appointmentForm.reset();
     }
   }
 
-  get upcomingAppointments(): {
-    patientName: string;
-    appointment: Appointment;
-    patient: Patient;
-  }[] {
+  get upcomingAppointments(): { patientName: string; appointment: Appointment; patient: Patient }[] {
     const now: Date = new Date();
     return this.patients
       .reduce(
         (
-          acc: {
-            patientName: string;
-            appointment: Appointment;
-            patient: Patient;
-          }[],
+          acc: { patientName: string; appointment: Appointment; patient: Patient }[],
           patient: Patient
         ) => {
-          const upcoming = patient.appointments
+          const upcoming = (patient.appointments || [])
             .filter((app: Appointment) => new Date(app.date) >= now)
             .map((app: Appointment) => ({
               patientName: patient.name,
@@ -361,6 +365,7 @@ export class DoctorsClinicComponent
       });
   }
 
+  // --- Search ---
   onSearchTermChange(): void {
     this.updateFilteredPatients();
   }
@@ -389,13 +394,11 @@ export class DoctorsClinicComponent
     return this.filteredPatientIndices[filteredIdx];
   }
 
+  // --- WhatsApp Reminder ---
   sendWhatsAppReminder(patient: Patient, appointment: Appointment): void {
     let phoneNumber: string = patient.whatsapp || '';
     let cleanPhoneNumber: string = phoneNumber.replace(/[^\d]/g, '');
-    let countryCode: string = (patient.countryCode || '91').replace(
-      /[^\d]/g,
-      ''
-    );
+    let countryCode: string = (patient.countryCode || '91').replace(/[^\d]/g, '');
     cleanPhoneNumber = cleanPhoneNumber.replace(/^0+/, '');
     const phoneForWhatsApp = `${countryCode}${cleanPhoneNumber}`;
     const message: string =
@@ -416,5 +419,27 @@ export class DoctorsClinicComponent
     const month: string = ('0' + (d.getMonth() + 1)).slice(-2);
     const year: string = d.getFullYear().toString();
     return `${day}/${month}/${year}`;
+  }
+
+  // --- Download/Upload Functionality ---
+  downloadData(): void {
+    // Download all patient data as .txt using provided function
+    this.componentDataDownloader(this.patients);
+  }
+
+  async uploadData(event: Event): Promise<void> {
+    try {
+      const result = await this.componentDataUploader(event);
+      if (Array.isArray(result)) {
+        // Replace all data with uploaded content
+        this.patients = result as Patient[];
+        this.savePatientsToLocalStorage();
+        this.updateFilteredPatients();
+        this.selectedPatientIdx = null;
+        this.cdr.detectChanges();
+      }
+    } catch (e) {
+      alert('Invalid file or data format.');
+    }
   }
 }
