@@ -1,4 +1,15 @@
-import { Component, OnInit } from '@angular/core';
+// DoctorsClinicComponent for Angular 18
+// Features:
+// - Add/edit patients and appointments
+// - Search/filter patients
+// - WhatsApp reminders for appointments
+// - Backup (download) and restore (upload) all clinic data as .txt file via header buttons
+// - Upload uses a small icon button (PrimeIcons v7), download is labeled "Backup Data"
+// - All UI styled with Bootstrap 5, icons with PrimeIcons
+// - Data stored in IndexedDB (not LocalStorage)
+// - Strict typing everywhere
+
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CommonExternalComponent } from '../common-external/common-external.component';
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
@@ -31,6 +42,28 @@ interface ClinicDB extends DBSchema {
 @Component({
   selector: 'app-doctors-clinic',
   template: `
+    <!-- Header with backup/download and upload/restore -->
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h1 class="mb-0 fs-3">Doctor's Clinic</h1>
+      <div class="d-flex align-items-center gap-2">
+        <button type="button"
+          class="btn btn-outline-primary btn-sm px-3 me-2 d-flex align-items-center"
+          (click)="backupData()"
+        >
+          <i class="pi pi-download me-2"></i> Backup Data
+        </button>
+        <label class="btn btn-outline-secondary btn-sm m-0 p-0 border-0" style="width:auto; min-width:unset; background:transparent;">
+          <input type="file"
+            accept=".txt"
+            (change)="restoreData($event)"
+            style="display:none"
+          />
+          <i class="pi pi-upload fs-5" style="vertical-align:middle;" title="Restore Data"></i>
+        </label>
+      </div>
+    </div>
+
+    <!-- Patient Add/Edit Form -->
     <form [formGroup]="patientForm" (ngSubmit)="addPatient()" class="clinic-form card shadow-sm p-4 mb-4">
       <h2 class="mb-3">Add New Patient</h2>
       <div class="row g-3">
@@ -89,6 +122,7 @@ interface ClinicDB extends DBSchema {
       </button>
     </form>
 
+    <!-- Patients List -->
     <div class="patients-list card shadow-sm p-4 mb-4">
       <h2>Patients</h2>
       <div class="mb-3">
@@ -107,11 +141,14 @@ interface ClinicDB extends DBSchema {
           <span>
             {{ patient.name }} <small class="text-muted" *ngIf="patient.dob">({{ patient.dob | date:'mediumDate' }})</small>
           </span>
-          <button (click)="selectPatient(getOriginalIndex(idx))" class="btn btn-outline-success btn-sm">Set Appointment</button>
+          <button (click)="selectPatient(getOriginalIndex(idx))" class="btn btn-outline-success btn-sm">
+            Set Appointment
+          </button>
         </li>
       </ul>
     </div>
 
+    <!-- Appointment Add/Edit Form -->
     <form *ngIf="selectedPatientIdx !== null" [formGroup]="appointmentForm" (ngSubmit)="addAppointment()" class="appointment-form card shadow-sm p-4 mb-4">
       <h3 class="mb-3">New Appointment for <span class="text-primary">{{ patients[selectedPatientIdx]?.name }}</span></h3>
       <div class="row g-3">
@@ -137,6 +174,7 @@ interface ClinicDB extends DBSchema {
       </div>
     </form>
 
+    <!-- Appointments Table -->
     <div class="appointments-table card shadow-sm p-4">
       <h2>Upcoming Appointments</h2>
       <div class="table-responsive">
@@ -162,7 +200,7 @@ interface ClinicDB extends DBSchema {
                   (click)="sendWhatsAppReminder(item.patient, item.appointment)"
                   title="Send WhatsApp Reminder"
                   class="btn btn-outline-success btn-sm"
-                >Send WhatsApp</button>
+                ><i class="pi pi-whatsapp"></i> Send WhatsApp</button>
               </td>
             </tr>
           </tbody>
@@ -186,7 +224,8 @@ interface ClinicDB extends DBSchema {
       opacity: 1 !important;
       cursor: not-allowed;
     }
-    `,
+    .pi.pi-upload { font-size: 1.3rem; }
+    `
   ],
 })
 export class DoctorsClinicComponent
@@ -202,7 +241,10 @@ export class DoctorsClinicComponent
   private filteredPatientIndices: number[] = [];
   private db!: IDBPDatabase<ClinicDB>;
 
-  constructor(private fb: FormBuilder) {
+  constructor(
+    private fb: FormBuilder,
+    private cdr: ChangeDetectorRef
+  ) {
     super();
     this.patientForm = this.fb.group({
       name: ['', Validators.required],
@@ -276,6 +318,7 @@ export class DoctorsClinicComponent
     }
     this.patients = allPatients;
     this.updateFilteredPatients();
+    this.cdr.markForCheck();
   }
 
   async addPatient(): Promise<void> {
@@ -416,5 +459,48 @@ export class DoctorsClinicComponent
     const month: string = ('0' + (d.getMonth() + 1)).slice(-2);
     const year: string = d.getFullYear().toString();
     return `${day}/${month}/${year}`;
+  }
+
+  // --- Backup & Restore Functionality ---
+
+  /** Download all patient data as .txt file using parent's componentDataDownloader */
+  async backupData(): Promise<void> {
+    // Read all patient data from IndexedDB
+    const tx = this.db.transaction('patients', 'readonly');
+    const store = tx.objectStore('patients');
+    const allPatients: Patient[] = [];
+    let cursor = await store.openCursor();
+    while (cursor) {
+      const patient = { ...cursor.value };
+      delete (patient as any).key;
+      allPatients.push(patient);
+      cursor = await cursor.continue();
+    }
+    // Pass to parent function for download
+    this.componentDataDownloader({ patients: allPatients });
+  }
+
+  /** Restore all patient data from uploaded .txt file using parent's componentDataUploader */
+  async restoreData(event: Event): Promise<void> {
+    try {
+      const result = await this.componentDataUploader(event);
+      if (result && Array.isArray(result.patients)) {
+        // Remove all old patients
+        const txClear = this.db.transaction('patients', 'readwrite');
+        await txClear.objectStore('patients').clear();
+        await txClear.done;
+        // Add all new patients
+        const txAdd = this.db.transaction('patients', 'readwrite');
+        for (const patient of result.patients as Patient[]) {
+          const key = this.getPatientKey(patient.name, patient.whatsapp);
+          await txAdd.objectStore('patients').put({ ...patient, key });
+        }
+        await txAdd.done;
+        await this.loadPatientsFromDB();
+        this.cdr.detectChanges();
+      }
+    } catch (err) {
+      // Optionally show error to user
+    }
   }
 }
