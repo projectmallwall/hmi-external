@@ -8,6 +8,8 @@
 // - All UI styled with Bootstrap 5, icons with PrimeIcons
 // - Data stored in LocalStorage (browser only, no server needed)
 // - Strict typing everywhere
+// - Upcoming appointments: Time shown in 12-hour format; each row has Delete button
+// - Patients list: Edit button allows inline editing of patient data
 
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -57,7 +59,7 @@ interface Appointment {
 
     <!-- Patient Add/Edit Form -->
     <form [formGroup]="patientForm" (ngSubmit)="addPatient()" class="clinic-form card shadow-sm p-4 mb-4">
-      <h2 class="mb-3">Add New Patient</h2>
+      <h2 class="mb-3">{{ editPatientIdx === null ? 'Add New Patient' : 'Edit Patient' }}</h2>
       <div class="row g-3">
         <div class="col-md-6">
           <label class="form-label">Name: <span class="text-danger">*</span>
@@ -110,8 +112,13 @@ interface Appointment {
       <button type="submit"
         [disabled]="!patientForm.get('name')?.value || !patientForm.get('whatsapp')?.value"
         class="btn btn-primary mt-3 add-patient-btn">
-        Save Patient
+        {{ editPatientIdx === null ? 'Save Patient' : 'Update Patient' }}
       </button>
+      <button *ngIf="editPatientIdx !== null"
+        type="button"
+        (click)="cancelEditPatient()"
+        class="btn btn-secondary mt-3 ms-2"
+      >Cancel Edit</button>
     </form>
 
     <!-- Patients List -->
@@ -133,9 +140,14 @@ interface Appointment {
           <span>
             {{ patient.name }} <small class="text-muted" *ngIf="patient.dob">({{ patient.dob | date:'mediumDate' }})</small>
           </span>
-          <button (click)="selectPatient(getOriginalIndex(idx))" class="btn btn-outline-success btn-sm">
-            Set Appointment
-          </button>
+          <div class="d-flex gap-2">
+            <button (click)="editPatient(getOriginalIndex(idx))" class="btn btn-outline-warning btn-sm" title="Edit Patient">
+              <i class="pi pi-pencil"></i>
+            </button>
+            <button (click)="selectPatient(getOriginalIndex(idx))" class="btn btn-outline-success btn-sm" title="Set Appointment">
+              Set Appointment
+            </button>
+          </div>
         </li>
       </ul>
     </div>
@@ -178,13 +190,14 @@ interface Appointment {
               <th>Time</th>
               <th>Reason</th>
               <th>Reminder</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let item of upcomingAppointments">
+            <tr *ngFor="let item of upcomingAppointments; let i = index">
               <td>{{ item.patientName }}</td>
               <td>{{ item.appointment.date | date:'mediumDate' }}</td>
-              <td>{{ item.appointment.time }}</td>
+              <td>{{ formatTime12(item.appointment.time) }}</td>
               <td>{{ item.appointment.reason }}</td>
               <td>
                 <button
@@ -193,6 +206,13 @@ interface Appointment {
                   title="Send WhatsApp Reminder"
                   class="btn btn-outline-success btn-sm"
                 ><i class="pi pi-whatsapp"></i> Send WhatsApp</button>
+              </td>
+              <td>
+                <button type="button"
+                  (click)="deleteAppointment(item.patient, item.appointment)"
+                  class="btn btn-outline-danger btn-sm"
+                  title="Delete Appointment"
+                ><i class="pi pi-trash"></i></button>
               </td>
             </tr>
           </tbody>
@@ -231,6 +251,7 @@ export class DoctorsClinicComponent
   searchTerm: string = '';
   filteredPatients: Patient[] = [];
   private filteredPatientIndices: number[] = [];
+  editPatientIdx: number | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -321,15 +342,24 @@ export class DoctorsClinicComponent
         address: formValue.address || undefined,
         appointments: [],
       };
-      // Check if patient exists, update if so, else add
-      const key = this.getPatientKey(patient.name, patient.whatsapp);
-      const existingIdx = this.patients.findIndex(
-        (p) => this.getPatientKey(p.name, p.whatsapp) === key
-      );
-      if (existingIdx >= 0) {
-        this.patients[existingIdx] = { ...patient };
+
+      if (this.editPatientIdx !== null) {
+        // Editing existing patient, keep their appointments
+        patient.appointments = this.patients[this.editPatientIdx].appointments || [];
+        this.patients[this.editPatientIdx] = { ...patient };
+        this.editPatientIdx = null;
       } else {
-        this.patients.push({ ...patient });
+        // Check if patient exists, update if so, else add
+        const key = this.getPatientKey(patient.name, patient.whatsapp);
+        const existingIdx = this.patients.findIndex(
+          (p) => this.getPatientKey(p.name, p.whatsapp) === key
+        );
+        if (existingIdx >= 0) {
+          patient.appointments = this.patients[existingIdx].appointments || [];
+          this.patients[existingIdx] = { ...patient };
+        } else {
+          this.patients.push({ ...patient });
+        }
       }
       this.savePatientsToStorage();
       this.loadPatientsFromStorage();
@@ -338,9 +368,44 @@ export class DoctorsClinicComponent
     }
   }
 
+  editPatient(idx: number): void {
+    this.editPatientIdx = idx;
+    const patient: Patient = this.patients[idx];
+    this.patientForm.reset({
+      name: patient.name,
+      dob: patient.dob ? this.toInputDate(patient.dob) : '',
+      countryCode: patient.countryCode || '91',
+      phone: patient.phone || '',
+      whatsapp: patient.whatsapp,
+      sameAsPhone: false,
+      email: patient.email || '',
+      address: patient.address || ''
+    });
+    this.patientForm.get('whatsapp')?.enable();
+    this.selectedPatientIdx = null;
+    this.cdr.detectChanges();
+  }
+
+  cancelEditPatient(): void {
+    this.editPatientIdx = null;
+    this.patientForm.reset({ countryCode: '91' });
+    this.patientForm.get('whatsapp')?.enable();
+    this.cdr.detectChanges();
+  }
+
+  private toInputDate(d: Date | string | undefined): string {
+    if (!d) return '';
+    const dateObj: Date = typeof d === 'string' ? new Date(d) : d;
+    const yyyy = dateObj.getFullYear();
+    const mm = ('0' + (dateObj.getMonth() + 1)).slice(-2);
+    const dd = ('0' + dateObj.getDate()).slice(-2);
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
   selectPatient(idx: number): void {
     this.selectedPatientIdx = idx;
     this.appointmentForm.reset();
+    this.editPatientIdx = null;
   }
 
   cancelAppointment(): void {
@@ -462,7 +527,7 @@ export class DoctorsClinicComponent
       `Hi ${patient.name},\n` +
       `This is a reminder for your appointment at Swasthayu Clinic.\n` +
       `Date: ${this.formatDate(appointment.date)}\n` +
-      `Time: ${appointment.time}\n` +
+      `Time: ${this.formatTime12(appointment.time)}\n` +
       `Reason: ${appointment.reason}\n\n` +
       `Thank you. \nBest regards, \nSwasthayu Clinic, Ravet`;
     const encodedMessage: string = encodeURIComponent(message);
@@ -478,11 +543,21 @@ export class DoctorsClinicComponent
     return `${day}/${month}/${year}`;
   }
 
+  formatTime12(time24: string): string {
+    if (!time24) return '';
+    const [hourStr, minStr] = time24.split(':');
+    let hour: number = parseInt(hourStr, 10);
+    const minute: string = minStr || '00';
+    const ampm: string = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12;
+    if (hour === 0) hour = 12;
+    return `${hour}:${minute} ${ampm}`;
+  }
+
   // --- Backup & Restore Functionality ---
 
   /** Download all patient data as .txt file using parent's componentDataDownloader */
   async backupData(): Promise<void> {
-    // Read all patient data from LocalStorage
     this.componentDataDownloader({ patients: this.patients });
   }
 
@@ -498,6 +573,27 @@ export class DoctorsClinicComponent
       }
     } catch (err) {
       // Optionally show error to user
+    }
+  }
+
+  // --- Delete Appointment Functionality ---
+  deleteAppointment(patient: Patient, appointment: Appointment): void {
+    if (!patient || !appointment) return;
+    const idx = this.patients.findIndex(
+      (p) =>
+        this.getPatientKey(p.name, p.whatsapp) ===
+        this.getPatientKey(patient.name, patient.whatsapp)
+    );
+    if (idx >= 0) {
+      const apps = this.patients[idx].appointments || [];
+      const appIdx = apps.indexOf(appointment);
+      if (appIdx >= 0) {
+        apps.splice(appIdx, 1);
+        this.patients[idx].appointments = [...apps];
+        this.savePatientsToStorage();
+        this.loadPatientsFromStorage();
+        this.cdr.detectChanges();
+      }
     }
   }
 }
