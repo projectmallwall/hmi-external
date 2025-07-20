@@ -6,13 +6,12 @@
 // - Backup (download) and restore (upload) all clinic data as .txt file via header buttons
 // - Upload uses a small icon button (PrimeIcons v7), download is labeled "Backup Data"
 // - All UI styled with Bootstrap 5, icons with PrimeIcons
-// - Data stored in IndexedDB (not LocalStorage)
+// - Data stored in LocalStorage (browser only, no server needed)
 // - Strict typing everywhere
 
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CommonExternalComponent } from '../common-external/common-external.component';
-import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
 interface Patient {
   key?: string;
@@ -30,13 +29,6 @@ interface Appointment {
   date: Date | string;
   time: string;
   reason: string;
-}
-
-interface ClinicDB extends DBSchema {
-  patients: {
-    key: string;
-    value: Patient;
-  };
 }
 
 @Component({
@@ -239,7 +231,6 @@ export class DoctorsClinicComponent
   searchTerm: string = '';
   filteredPatients: Patient[] = [];
   private filteredPatientIndices: number[] = [];
-  private db!: IDBPDatabase<ClinicDB>;
 
   constructor(
     private fb: FormBuilder,
@@ -264,9 +255,8 @@ export class DoctorsClinicComponent
     });
   }
 
-  async ngOnInit(): Promise<void> {
-    await this.initDB();
-    await this.loadPatientsFromDB();
+  ngOnInit(): void {
+    this.loadPatientsFromStorage();
 
     this.patientForm
       .get('sameAsPhone')
@@ -291,34 +281,28 @@ export class DoctorsClinicComponent
     this.updateFilteredPatients();
   }
 
-  private async initDB(): Promise<void> {
-    this.db = await openDB<ClinicDB>('doctors-clinic-db', 1, {
-      upgrade(db: IDBPDatabase<ClinicDB>) {
-        if (!db.objectStoreNames.contains('patients')) {
-          db.createObjectStore('patients', { keyPath: 'key' });
-        }
-      },
-    });
-  }
-
   private getPatientKey(name: string, whatsapp: string): string {
     return `${name.trim().toLowerCase()}_${whatsapp.trim()}`;
   }
 
-  private async loadPatientsFromDB(): Promise<void> {
-    const tx = this.db.transaction('patients', 'readonly');
-    const store = tx.objectStore('patients');
-    const allPatients: Patient[] = [];
-    let cursor = await store.openCursor();
-    while (cursor) {
-      const patient = { ...cursor.value };
-      delete (patient as any).key;
-      allPatients.push(patient);
-      cursor = await cursor.continue();
+  private loadPatientsFromStorage(): void {
+    const data = localStorage.getItem('doctors-clinic-data');
+    if (data) {
+      try {
+        const obj = JSON.parse(data) as { patients: Patient[] };
+        this.patients = Array.isArray(obj.patients) ? obj.patients : [];
+      } catch {
+        this.patients = [];
+      }
+    } else {
+      this.patients = [];
     }
-    this.patients = allPatients;
     this.updateFilteredPatients();
     this.cdr.markForCheck();
+  }
+
+  private savePatientsToStorage(): void {
+    localStorage.setItem('doctors-clinic-data', JSON.stringify({ patients: this.patients }));
   }
 
   async addPatient(): Promise<void> {
@@ -337,9 +321,18 @@ export class DoctorsClinicComponent
         address: formValue.address || undefined,
         appointments: [],
       };
+      // Check if patient exists, update if so, else add
       const key = this.getPatientKey(patient.name, patient.whatsapp);
-      await this.db.put('patients', { ...patient, key });
-      await this.loadPatientsFromDB();
+      const existingIdx = this.patients.findIndex(
+        (p) => this.getPatientKey(p.name, p.whatsapp) === key
+      );
+      if (existingIdx >= 0) {
+        this.patients[existingIdx] = { ...patient };
+      } else {
+        this.patients.push({ ...patient });
+      }
+      this.savePatientsToStorage();
+      this.loadPatientsFromStorage();
       this.patientForm.reset({ countryCode: '91' });
       this.patientForm.get('whatsapp')?.enable();
     }
@@ -360,16 +353,20 @@ export class DoctorsClinicComponent
       const appointment: Appointment = {
         ...this.appointmentForm.value,
       };
-      const patient = this.patients[this.selectedPatientIdx];
-      patient.appointments.push(appointment);
-      const key = this.getPatientKey(patient.name, patient.whatsapp);
-      await this.db.put('patients', { ...patient, key });
-      await this.loadPatientsFromDB();
+      this.patients[this.selectedPatientIdx].appointments =
+        this.patients[this.selectedPatientIdx].appointments || [];
+      this.patients[this.selectedPatientIdx].appointments.push(appointment);
+      this.savePatientsToStorage();
+      this.loadPatientsFromStorage();
       this.selectedPatientIdx = null;
       this.appointmentForm.reset();
     }
   }
 
+  /**
+   * Returns all upcoming appointments (future date+time) sorted by datetime ascending.
+   * Both date and time are considered for comparison.
+   */
   get upcomingAppointments(): {
     patientName: string;
     appointment: Appointment;
@@ -386,8 +383,19 @@ export class DoctorsClinicComponent
           }[],
           patient: Patient
         ) => {
-          const upcoming = patient.appointments
-            .filter((app: Appointment) => new Date(app.date) >= now)
+          const upcoming = (patient.appointments || [])
+            .filter((app: Appointment) => {
+              const dtString: string =
+                typeof app.date === 'string'
+                  ? app.date
+                  : app.date instanceof Date
+                  ? app.date.toISOString().slice(0, 10)
+                  : '';
+              const timeString: string = app.time || '00:00';
+              // Combine date and time to a full ISO string
+              const appointmentDateTime = new Date(dtString + 'T' + timeString);
+              return appointmentDateTime.getTime() >= now.getTime();
+            })
             .map((app: Appointment) => ({
               patientName: patient.name,
               appointment: app,
@@ -398,9 +406,18 @@ export class DoctorsClinicComponent
         []
       )
       .sort((a, b) => {
-        const d1 = new Date(a.appointment.date + 'T' + a.appointment.time);
-        const d2 = new Date(b.appointment.date + 'T' + b.appointment.time);
-        return d1.getTime() - d2.getTime();
+        // Use both date and time for sorting
+        const getDateTime = (app: Appointment): number => {
+          const dtString: string =
+            typeof app.date === 'string'
+              ? app.date
+              : app.date instanceof Date
+              ? app.date.toISOString().slice(0, 10)
+              : '';
+          const timeString: string = app.time || '00:00';
+          return new Date(dtString + 'T' + timeString).getTime();
+        };
+        return getDateTime(a.appointment) - getDateTime(b.appointment);
       });
   }
 
@@ -465,19 +482,8 @@ export class DoctorsClinicComponent
 
   /** Download all patient data as .txt file using parent's componentDataDownloader */
   async backupData(): Promise<void> {
-    // Read all patient data from IndexedDB
-    const tx = this.db.transaction('patients', 'readonly');
-    const store = tx.objectStore('patients');
-    const allPatients: Patient[] = [];
-    let cursor = await store.openCursor();
-    while (cursor) {
-      const patient = { ...cursor.value };
-      delete (patient as any).key;
-      allPatients.push(patient);
-      cursor = await cursor.continue();
-    }
-    // Pass to parent function for download
-    this.componentDataDownloader({ patients: allPatients });
+    // Read all patient data from LocalStorage
+    this.componentDataDownloader({ patients: this.patients });
   }
 
   /** Restore all patient data from uploaded .txt file using parent's componentDataUploader */
@@ -485,18 +491,9 @@ export class DoctorsClinicComponent
     try {
       const result = await this.componentDataUploader(event);
       if (result && Array.isArray(result.patients)) {
-        // Remove all old patients
-        const txClear = this.db.transaction('patients', 'readwrite');
-        await txClear.objectStore('patients').clear();
-        await txClear.done;
-        // Add all new patients
-        const txAdd = this.db.transaction('patients', 'readwrite');
-        for (const patient of result.patients as Patient[]) {
-          const key = this.getPatientKey(patient.name, patient.whatsapp);
-          await txAdd.objectStore('patients').put({ ...patient, key });
-        }
-        await txAdd.done;
-        await this.loadPatientsFromDB();
+        this.patients = result.patients as Patient[];
+        this.savePatientsToStorage();
+        this.loadPatientsFromStorage();
         this.cdr.detectChanges();
       }
     } catch (err) {
