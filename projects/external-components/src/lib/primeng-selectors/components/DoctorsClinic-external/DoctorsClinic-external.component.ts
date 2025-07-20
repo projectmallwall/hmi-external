@@ -9,9 +9,11 @@
 // - Data stored in LocalStorage (browser only, no server needed)
 // - Strict typing everywhere
 // - Upcoming appointments: Time shown in 12-hour format; each row has Delete button
-// - Patients list: Edit button allows inline editing of patient data
+// - Patients list: Edit button is blue and icon-only; set appointment is a blue calendar icon
+// - On clicking edit, page scrolls smoothly to the patient form section
+// - When editing a patient, Save and Cancel buttons are placed side by side and labeled as 'Save' and 'Cancel'
 
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CommonExternalComponent } from '../common-external/common-external.component';
 
@@ -58,7 +60,7 @@ interface Appointment {
     </div>
 
     <!-- Patient Add/Edit Form -->
-    <form [formGroup]="patientForm" (ngSubmit)="addPatient()" class="clinic-form card shadow-sm p-4 mb-4">
+    <form #patientFormSection [formGroup]="patientForm" (ngSubmit)="addPatient()" class="clinic-form card shadow-sm p-4 mb-4">
       <h2 class="mb-3">{{ editPatientIdx === null ? 'Add New Patient' : 'Edit Patient' }}</h2>
       <div class="row g-3">
         <div class="col-md-6">
@@ -109,16 +111,18 @@ interface Appointment {
           </label>
         </div>
       </div>
-      <button type="submit"
-        [disabled]="!patientForm.get('name')?.value || !patientForm.get('whatsapp')?.value"
-        class="btn btn-primary mt-3 add-patient-btn">
-        {{ editPatientIdx === null ? 'Save Patient' : 'Update Patient' }}
-      </button>
-      <button *ngIf="editPatientIdx !== null"
-        type="button"
-        (click)="cancelEditPatient()"
-        class="btn btn-secondary mt-3 ms-2"
-      >Cancel Edit</button>
+      <div class="mt-3 d-flex gap-2">
+        <button type="submit"
+          [disabled]="!patientForm.get('name')?.value || !patientForm.get('whatsapp')?.value"
+          class="btn btn-primary add-patient-btn">
+          {{ editPatientIdx === null ? 'Save Patient' : 'Save' }}
+        </button>
+        <button *ngIf="editPatientIdx !== null"
+          type="button"
+          (click)="cancelEditPatient()"
+          class="btn btn-secondary"
+        >Cancel</button>
+      </div>
     </form>
 
     <!-- Patients List -->
@@ -141,11 +145,17 @@ interface Appointment {
             {{ patient.name }} <small class="text-muted" *ngIf="patient.dob">({{ patient.dob | date:'mediumDate' }})</small>
           </span>
           <div class="d-flex gap-2">
-            <button (click)="editPatient(getOriginalIndex(idx))" class="btn btn-outline-warning btn-sm" title="Edit Patient">
+            <button (click)="editPatient(getOriginalIndex(idx))"
+              class="btn btn-link p-0 m-0 text-primary"
+              style="font-size:1.3rem;min-width:unset;width:2.2rem;height:2.2rem;"
+              title="Edit Patient">
               <i class="pi pi-pencil"></i>
             </button>
-            <button (click)="selectPatient(getOriginalIndex(idx))" class="btn btn-outline-success btn-sm" title="Set Appointment">
-              Set Appointment
+            <button (click)="selectPatient(getOriginalIndex(idx))"
+              class="btn btn-link p-0 m-0 text-primary"
+              style="font-size:1.3rem;min-width:unset;width:2.2rem;height:2.2rem;"
+              title="Set Appointment">
+              <i class="pi pi-calendar"></i>
             </button>
           </div>
         </li>
@@ -237,6 +247,13 @@ interface Appointment {
       cursor: not-allowed;
     }
     .pi.pi-upload { font-size: 1.3rem; }
+    .btn-link.text-primary i {
+      color: #0d6efd !important;
+      vertical-align: middle;
+    }
+    .btn-link {
+      box-shadow: none !important;
+    }
     `
   ],
 })
@@ -244,6 +261,8 @@ export class DoctorsClinicComponent
   extends CommonExternalComponent
   implements OnInit
 {
+  @ViewChild('patientFormSection') patientFormSection!: ElementRef<HTMLFormElement>;
+
   patientForm: FormGroup;
   appointmentForm: FormGroup;
   patients: Patient[] = [];
@@ -384,6 +403,12 @@ export class DoctorsClinicComponent
     this.patientForm.get('whatsapp')?.enable();
     this.selectedPatientIdx = null;
     this.cdr.detectChanges();
+    // Scroll to patient form section after view updates
+    setTimeout(() => {
+      if (this.patientFormSection && this.patientFormSection.nativeElement) {
+        this.patientFormSection.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 50);
   }
 
   cancelEditPatient(): void {
