@@ -12,6 +12,9 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
       - Dynamic background transitions from vibrant to dark.
       - Continuous falling confetti animation visible in the background.
       - Interactive button triggers animated firework display, clearly visible.
+      - If a message or name is passed in the URL (?message=...&name=...), the personal wish section and name input are hidden.
+      - Button to create & copy a shareable URL with the current wish message and name.
+      - Name is shown in the greeting after fireworks burst if present in the URL.
       - Data is saved automatically in local storage.
       - Responsive and visually appealing using Bootstrap 5 and PrimeIcons.
     -->
@@ -34,7 +37,7 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
           <div class="text-center">
             <i class="pi pi-gift text-danger fs-2 mb-2"></i>
             <h1 class="fw-bold fs-3 mb-2" [ngStyle]="{'font-family':'Montserrat,sans-serif'}">
-              🎉 Happy Birthday! 🎂
+              🎉 Happy Birthday{{ showNameAfterFireworks && displayName ? ', ' + displayName + '!' : '!' }} 🎂
             </h1>
             <p class="lead mb-3 small-text" [ngStyle]="{'font-family':'Quicksand,sans-serif'}">
               {{ wishesMessage }}
@@ -47,9 +50,21 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
               <i class="pi pi-star-fill me-2"></i>
               Launch Fireworks!
             </button>
+            <br>
+            <button *ngIf="!urlHasMessageOrName"
+                    class="btn btn-outline-secondary btn-sm mt-1"
+                    (click)="copyShareUrl()">
+              <i class="pi pi-link me-1"></i>
+              Create & Copy Shareable URL
+            </button>
+            <input #hiddenCopyInput type="text" style="opacity:0;position:absolute;left:-9999px;" tabindex="-1" aria-hidden="true"/>
+            <div *ngIf="showCopiedMsg" class="text-success small-text mt-1">
+              <i class="pi pi-check-circle"></i> Copied!
+            </div>
           </div>
           <hr class="my-2">
-          <div>
+          <!-- Personal Wish Section only if no message or name in url -->
+          <div *ngIf="!urlHasMessageOrName">
             <label class="form-label fw-semibold small-text">Your Personal Wish</label>
             <textarea class="form-control form-control-sm mb-1"
                       rows="2"
@@ -57,6 +72,12 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
                       (ngModelChange)="saveToLocalStorage()"
                       maxlength="160"
                       placeholder="Write your wish..."></textarea>
+            <label class="form-label fw-semibold small-text mt-2">Recipient's Name (optional)</label>
+            <input class="form-control form-control-sm mb-1"
+                   maxlength="32"
+                   [(ngModel)]="name"
+                   (ngModelChange)="saveToLocalStorage()"
+                   placeholder="Enter recipient's name"/>
           </div>
         </div>
       </div>
@@ -94,16 +115,23 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
     /* Smaller card & text */
     .small-text { font-size: 0.98rem; }
     .card { box-shadow: 0 4px 16px rgba(0,0,0,0.09) !important; }
-    textarea.form-control-sm { font-size: 0.98rem; }
+    textarea.form-control-sm, input.form-control-sm { font-size: 0.98rem; }
   `]
 })
 export class BirthdayWishesComponent extends CommonExternalComponent implements AfterViewInit {
   wishesMessage: string = 'Wishing you a fantastic year ahead!';
+  name: string = '';
   backgroundClass: string = 'bg-vibrant';
   fireworksActive: boolean = false;
 
+  urlHasMessageOrName: boolean = false;
+  displayName: string = '';
+  showCopiedMsg: boolean = false;
+  showNameAfterFireworks: boolean = false;
+
   @ViewChild('confettiCanvas', { static: true }) confettiCanvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('fireworkCanvas', { static: true }) fireworkCanvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('hiddenCopyInput', { static: false }) hiddenCopyInputRef!: ElementRef<HTMLInputElement>;
 
   private confettiCtx!: CanvasRenderingContext2D;
   private confettiParticles: ConfettiParticle[] = [];
@@ -115,7 +143,7 @@ export class BirthdayWishesComponent extends CommonExternalComponent implements 
 
   constructor(private cdr: ChangeDetectorRef) {
     super();
-    this.loadFromLocalStorage();
+    this.checkUrlParams();
     setTimeout(() => this.toggleBackground(), 3500);
   }
 
@@ -145,7 +173,6 @@ export class BirthdayWishesComponent extends CommonExternalComponent implements 
 
   // --- Confetti ---
   private initConfetti(): void {
-    // More particles for better visibility
     this.confettiParticles = Array.from({length: 120}, () => this.createConfettiParticle());
   }
 
@@ -201,6 +228,7 @@ export class BirthdayWishesComponent extends CommonExternalComponent implements 
   triggerFireworks(): void {
     if (this.fireworksActive) return;
     this.fireworksActive = true;
+    this.showNameAfterFireworks = false;
     this.launchFireworks();
   }
 
@@ -214,7 +242,11 @@ export class BirthdayWishesComponent extends CommonExternalComponent implements 
         clearInterval(interval);
         setTimeout(() => {
           this.fireworksActive = false;
-          this.cdr.detectChanges();
+          // Show name after fireworks finish if name exists in url or input
+          if (this.displayName) {
+            this.showNameAfterFireworks = true;
+            this.cdr.detectChanges();
+          }
         }, 1800);
       }
     }, 330);
@@ -259,18 +291,90 @@ export class BirthdayWishesComponent extends CommonExternalComponent implements 
 
   // --- Local Storage ---
   saveToLocalStorage(): void {
-    localStorage.setItem('birthdayWishesApp', JSON.stringify({ wishesMessage: this.wishesMessage }));
+    if (!this.urlHasMessageOrName) {
+      localStorage.setItem('birthdayWishesApp', JSON.stringify({ wishesMessage: this.wishesMessage, name: this.name }));
+    }
   }
   loadFromLocalStorage(): void {
+    if (this.urlHasMessageOrName) return;
     const data = localStorage.getItem('birthdayWishesApp');
     if (data) {
       try {
         const obj = JSON.parse(data);
-        if (obj && typeof obj.wishesMessage === 'string') {
-          this.wishesMessage = obj.wishesMessage;
+        if (obj) {
+          if (typeof obj.wishesMessage === 'string') {
+            this.wishesMessage = obj.wishesMessage;
+          }
+          if (typeof obj.name === 'string') {
+            this.name = obj.name;
+          }
         }
       } catch {}
     }
+  }
+
+  // --- URL Params Logic ---
+  private checkUrlParams(): void {
+    const params = new URLSearchParams(window.location.search);
+    const msg = params.get('message');
+    const nameParam = params.get('name');
+    if ((msg && msg.trim().length > 0) || (nameParam && nameParam.trim().length > 0)) {
+      if (msg && msg.trim().length > 0) {
+        this.wishesMessage = decodeURIComponent(msg);
+      }
+      if (nameParam && nameParam.trim().length > 0) {
+        this.displayName = decodeURIComponent(nameParam);
+      } else {
+        this.displayName = '';
+      }
+      this.urlHasMessageOrName = true;
+    } else {
+      this.loadFromLocalStorage();
+      this.displayName = this.name;
+      this.urlHasMessageOrName = false;
+    }
+  }
+
+  copyShareUrl(): void {
+    const url = new URL(window.location.href.split('?')[0]);
+    url.searchParams.set('message', encodeURIComponent(this.wishesMessage.trim()));
+    if (this.name.trim()) {
+      url.searchParams.set('name', encodeURIComponent(this.name.trim()));
+    }
+    const urlString = url.toString();
+
+    // Try Clipboard API first, fallback to execCommand if not available
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard.writeText(urlString).then(() => {
+        this.showCopySuccess();
+      }).catch(() => {
+        this.fallbackCopy(urlString);
+      });
+    } else {
+      this.fallbackCopy(urlString);
+    }
+  }
+
+  private fallbackCopy(text: string): void {
+    if (this.hiddenCopyInputRef && this.hiddenCopyInputRef.nativeElement) {
+      const input = this.hiddenCopyInputRef.nativeElement;
+      input.value = text;
+      input.style.display = 'block';
+      input.select();
+      input.setSelectionRange(0, 99999);
+      document.execCommand('copy');
+      input.style.display = 'none';
+      this.showCopySuccess();
+    }
+  }
+
+  private showCopySuccess(): void {
+    this.showCopiedMsg = true;
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      this.showCopiedMsg = false;
+      this.cdr.detectChanges();
+    }, 1400);
   }
 }
 
