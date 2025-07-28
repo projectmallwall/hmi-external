@@ -1,1 +1,48 @@
-{}
+{
+  "Birthday-wishes": {
+    "headerField": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Birthday-wishes/Birthday-wishes/header.field.json"
+    },
+    "headerSection": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Birthday-wishes/Birthday-wishes/header.section.json"
+    },
+    "field": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Birthday-wishes/Birthday-wishes/body.field.json"
+    },
+    "section": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Birthday-wishes/Birthday-wishes/body.section.json"
+    },
+    "footerField": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Birthday-wishes/Birthday-wishes/footer.field.json"
+    },
+    "footerSection": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Birthday-wishes/Birthday-wishes/footer.section.json"
+    },
+    "data": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Birthday-wishes/Birthday-wishes/body.data.json"
+    },
+    "navField": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Birthday-wishes/Birthday-wishes/nav.field.json"
+    },
+    "navSection": {
+      "fetchFromLocal": true,
+      "localURL": "./assets/pageLayout/Birthday-wishes/Birthday-wishes/nav.section.json"
+    },
+    "authGuardConfig": {
+      "enabled": false,
+      "conditions": []
+    },
+    "globalPageSettings": {
+      "title": "Birthday-wishes",
+      "layoutProperties": null
+    }
+  }
+}
