@@ -14,7 +14,7 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
       - Interactive button triggers animated firework display, clearly visible.
       - If a message or name is passed in the URL (?message=...&name=...), the personal wish section and name input are hidden.
       - Button to create & copy a shareable URL with the current wish message and name.
-      - Name is shown in the greeting after fireworks burst if present in the URL.
+      - Name is shown between fireworks bursts if present in the URL or entered.
       - Data is saved automatically in local storage.
       - Responsive and visually appealing using Bootstrap 5 and PrimeIcons.
     -->
@@ -34,10 +34,10 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
       <div class="d-flex flex-column justify-content-center align-items-center min-vh-100">
         <div class="card shadow-lg p-3 animate__animated animate__fadeInDown"
              style="max-width: 320px; background: rgba(255,255,255,0.92); border-radius: 1.25rem;">
-          <div class="text-center">
+          <div class="text-center position-relative">
             <i class="pi pi-gift text-danger fs-2 mb-2"></i>
             <h1 class="fw-bold fs-3 mb-2" [ngStyle]="{'font-family':'Montserrat,sans-serif'}">
-              🎉 Happy Birthday{{ showNameAfterFireworks && displayName ? ', ' + displayName + '!' : '!' }} 🎂
+              🎉 Happy Birthday{{ displayName ? ', ' + displayName + '!' : '!' }} 🎂
             </h1>
             <p class="lead mb-3 small-text" [ngStyle]="{'font-family':'Quicksand,sans-serif'}">
               {{ wishesMessage }}
@@ -61,6 +61,13 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
             <div *ngIf="showCopiedMsg" class="text-success small-text mt-1">
               <i class="pi pi-check-circle"></i> Copied!
             </div>
+            <!-- Animated name between fireworks -->
+            <div *ngIf="showNameDuringFireworks && displayName"
+                 class="firework-name-overlay animate__animated animate__fadeIn animate__faster">
+              <span class="fw-bold fs-2" [ngStyle]="{'font-family':'Montserrat,sans-serif', 'color':'#f857a6', 'textShadow': '0 2px 8px #fff'}">
+                {{ displayName }}
+              </span>
+            </div>
           </div>
           <hr class="my-2">
           <!-- Personal Wish Section only if no message or name in url -->
@@ -76,7 +83,7 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
             <input class="form-control form-control-sm mb-1"
                    maxlength="32"
                    [(ngModel)]="name"
-                   (ngModelChange)="saveToLocalStorage()"
+                   (ngModelChange)="onNameInput()"
                    placeholder="Enter recipient's name"/>
           </div>
         </div>
@@ -116,6 +123,27 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
     .small-text { font-size: 0.98rem; }
     .card { box-shadow: 0 4px 16px rgba(0,0,0,0.09) !important; }
     textarea.form-control-sm, input.form-control-sm { font-size: 0.98rem; }
+    /* Firework name overlay styling */
+    .firework-name-overlay {
+      position: absolute;
+      left: 50%;
+      top: 55%;
+      transform: translate(-50%,-50%);
+      z-index: 10;
+      pointer-events: none;
+      width: 100%;
+      text-align: center;
+      line-height: 1.1;
+      letter-spacing: 1px;
+      user-select: none;
+      text-shadow: 0 2px 8px #fff, 0 2px 24px #ffb5e2;
+      animation: pop-in 0.9s;
+    }
+    @keyframes pop-in {
+      0% { opacity: 0; transform: scale(0.7) translate(-50%,-50%);}
+      60% { opacity: 1; transform: scale(1.08) translate(-50%,-50%);}
+      100% { opacity: 1; transform: scale(1) translate(-50%,-50%);}
+    }
   `]
 })
 export class BirthdayWishesComponent extends CommonExternalComponent implements AfterViewInit {
@@ -127,7 +155,7 @@ export class BirthdayWishesComponent extends CommonExternalComponent implements 
   urlHasMessageOrName: boolean = false;
   displayName: string = '';
   showCopiedMsg: boolean = false;
-  showNameAfterFireworks: boolean = false;
+  showNameDuringFireworks: boolean = false;
 
   @ViewChild('confettiCanvas', { static: true }) confettiCanvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('fireworkCanvas', { static: true }) fireworkCanvasRef!: ElementRef<HTMLCanvasElement>;
@@ -228,7 +256,9 @@ export class BirthdayWishesComponent extends CommonExternalComponent implements 
   triggerFireworks(): void {
     if (this.fireworksActive) return;
     this.fireworksActive = true;
-    this.showNameAfterFireworks = false;
+    this.showNameDuringFireworks = !!this.displayName;
+    this.cdr.detectChanges();
+
     this.launchFireworks();
   }
 
@@ -242,14 +272,12 @@ export class BirthdayWishesComponent extends CommonExternalComponent implements 
         clearInterval(interval);
         setTimeout(() => {
           this.fireworksActive = false;
-          // Show name after fireworks finish if name exists in url or input
-          if (this.displayName) {
-            this.showNameAfterFireworks = true;
-            this.cdr.detectChanges();
-          }
+          this.showNameDuringFireworks = false;
+          this.cdr.detectChanges();
         }, 1800);
       }
     }, 330);
+
     if (!this.fireworkAnimationRunning) {
       this.fireworkAnimationRunning = true;
       this.animateFireworks();
@@ -293,6 +321,7 @@ export class BirthdayWishesComponent extends CommonExternalComponent implements 
   saveToLocalStorage(): void {
     if (!this.urlHasMessageOrName) {
       localStorage.setItem('birthdayWishesApp', JSON.stringify({ wishesMessage: this.wishesMessage, name: this.name }));
+      this.displayName = this.name;
     }
   }
   loadFromLocalStorage(): void {
@@ -307,6 +336,7 @@ export class BirthdayWishesComponent extends CommonExternalComponent implements 
           }
           if (typeof obj.name === 'string') {
             this.name = obj.name;
+            this.displayName = obj.name;
           }
         }
       } catch {}
@@ -333,6 +363,11 @@ export class BirthdayWishesComponent extends CommonExternalComponent implements 
       this.displayName = this.name;
       this.urlHasMessageOrName = false;
     }
+  }
+
+  onNameInput(): void {
+    this.displayName = this.name;
+    this.saveToLocalStorage();
   }
 
   copyShareUrl(): void {
