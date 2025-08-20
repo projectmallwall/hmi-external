@@ -10,11 +10,8 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
  * - Signals change automatically every 10 seconds; no configuration or data download/upload options.
  * - North-South and East-West signals are always complementary for safe crossing.
  * - Four visually accurate traffic lights at the correct corners, facing oncoming traffic.
- * - Southbound signal is now at top-left, eastbound at bottom-right. Other signals placed accordingly:
- *   - Top-left: Southbound
- *   - Top-right: Northbound
- *   - Bottom-right: Eastbound
- *   - Bottom-left: Westbound
+ * - Southbound signal is at top-left, northbound at top-right, eastbound at bottom-right, westbound at bottom-left.
+ * - Layout is strictly optimized for mobile portrait orientation.
  * - Clean, responsive UI using Bootstrap 5 and PrimeIcons v7.
  */
 
@@ -37,14 +34,14 @@ interface TrafficNinjaData {
 @Component({
   selector: 'app-traffic-ninja',
   template: `
-    <div class="card shadow my-3">
+    <div class="card shadow my-3 mx-auto" style="max-width:420px;">
       <div class="card-header d-flex align-items-center bg-primary text-white">
         <i class="pi pi-car me-2"></i>
-        <span class="fw-bold">Traffic Ninja – 4-Way Intersection Simulator</span>
+        <span class="fw-bold">Traffic Ninja – 4-Way Intersection</span>
       </div>
-      <div class="card-body">
+      <div class="card-body p-2">
         <!-- Intersection Visualization -->
-        <div class="intersection-container mx-auto my-4">
+        <div class="intersection-container-mobile mx-auto my-2">
           <!-- Draw roads -->
           <div class="road-horizontal"></div>
           <div class="road-vertical"></div>
@@ -70,7 +67,7 @@ interface TrafficNinjaData {
         </div>
 
         <!-- Timer Display -->
-        <div class="d-flex justify-content-center gap-4 mt-4">
+        <div class="d-flex justify-content-center gap-3 mt-3 flex-wrap">
           <div class="text-center">
             <span class="fw-bold">North-South:</span>
             <span [ngClass]="phaseClass(nsPhase)">
@@ -94,16 +91,32 @@ interface TrafficNinjaData {
     </div>
   `,
   styles: [`
-    /* Layout for intersection */
-    .intersection-container {
-      position: relative;
-      width: 400px;
-      height: 400px;
-      background: #e9ecef;
+    /* Mobile portrait-only layout */
+    :host {
+      display: block;
+      width: 100vw;
+      min-height: 100vh;
+      background: #f8fafb;
+    }
+    .card {
       border-radius: 18px;
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .intersection-container-mobile {
+      position: relative;
+      width: 94vw;
+      max-width: 390px;
+      height: 62vw;
+      max-height: 260px;
+      min-width: 210px;
+      min-height: 140px;
+      background: #e9ecef;
+      border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 0 8px #adb5bd;
-      margin-bottom: 2rem;
+      touch-action: none;
+      margin-bottom: 1.2rem;
     }
     .road-horizontal, .road-vertical {
       position: absolute;
@@ -114,13 +127,17 @@ interface TrafficNinjaData {
       top: 50%;
       left: 0;
       width: 100%;
-      height: 80px;
+      height: 17vw;
+      max-height: 55px;
+      min-height: 22px;
       transform: translateY(-50%);
     }
     .road-vertical {
       left: 50%;
       top: 0;
-      width: 80px;
+      width: 17vw;
+      max-width: 55px;
+      min-width: 22px;
       height: 100%;
       transform: translateX(-50%);
     }
@@ -129,9 +146,11 @@ interface TrafficNinjaData {
       top: 50%;
       left: 0;
       width: 100%;
-      height: 6px;
+      height: 2.5vw;
+      max-height: 8px;
+      min-height: 3px;
       background: repeating-linear-gradient(
-        to right, #fff 0 16px, transparent 16px 32px
+        to right, #fff 0 12px, transparent 12px 24px
       );
       transform: translateY(-50%);
       z-index: 2;
@@ -141,28 +160,30 @@ interface TrafficNinjaData {
       position: absolute;
       left: 50%;
       top: 0;
-      width: 6px;
+      width: 2.5vw;
+      max-width: 8px;
+      min-width: 3px;
       height: 100%;
       background: repeating-linear-gradient(
-        to bottom, #fff 0 16px, transparent 16px 32px
+        to bottom, #fff 0 12px, transparent 12px 24px
       );
       transform: translateX(-50%);
       z-index: 2;
       opacity: 0.7;
     }
-    /* Traffic signal positioning */
-    .top-left { position: absolute; top: 32px; left: 44px; }
-    .top-right { position: absolute; top: 32px; right: 44px; }
-    .bottom-right { position: absolute; bottom: 32px; right: 44px; }
-    .bottom-left { position: absolute; bottom: 32px; left: 44px; }
+    /* Traffic signal positioning for mobile portrait */
+    .top-left { position: absolute; top: 8px; left: 10px; }
+    .top-right { position: absolute; top: 8px; right: 10px; }
+    .bottom-right { position: absolute; bottom: 8px; right: 10px; }
+    .bottom-left { position: absolute; bottom: 8px; left: 10px; }
     .traffic-signal-box {
-      width: 46px;
-      height: 90px;
+      width: 38px;
+      height: 74px;
       z-index: 10;
       user-select: none;
-      background: rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.08);
       border-radius: 10px;
-      box-shadow: 0 2px 6px #21252944;
+      box-shadow: 0 2px 6px #21252933;
       padding: 2px 0 4px 0;
     }
     .traffic-signal-visual {
@@ -172,32 +193,59 @@ interface TrafficNinjaData {
       justify-content: center;
       background: #23272b;
       border-radius: 8px;
-      padding: 4px 0;
-      width: 34px;
-      height: 70px;
+      padding: 3px 0;
+      width: 28px;
+      height: 56px;
       margin: 0 auto;
-      box-shadow: 0 0 6px #0006;
+      box-shadow: 0 0 5px #0005;
     }
     .light {
-      width: 20px;
-      height: 20px;
+      width: 15px;
+      height: 15px;
       border-radius: 50%;
-      margin: 3px 0;
+      margin: 2px 0;
       background: #555;
       opacity: 0.25;
       border: 2px solid #222;
       transition: background 0.2s, opacity 0.2s;
     }
-    .light-red.on { background: #ff2c2c; opacity: 1; box-shadow: 0 0 8px 2px #ff2c2c99; }
-    .light-yellow.on { background: #ffd700; opacity: 1; box-shadow: 0 0 8px 2px #ffd70099; }
-    .light-green.on { background: #17dd17; opacity: 1; box-shadow: 0 0 8px 2px #17dd1799; }
+    .light-red.on { background: #ff2c2c; opacity: 1; box-shadow: 0 0 6px 1.5px #ff2c2c99; }
+    .light-yellow.on { background: #ffd700; opacity: 1; box-shadow: 0 0 6px 1.5px #ffd70099; }
+    .light-green.on { background: #17dd17; opacity: 1; box-shadow: 0 0 6px 1.5px #17dd1799; }
     .signal-label { color: #495057; font-size: 0.82em; text-align: center; }
     /* Phase indicator coloring */
     .text-green { color: #17dd17 !important; }
     .text-yellow { color: #ffd700 !important; }
     .text-red { color: #ff2c2c !important; }
-    @media (max-width: 600px) {
-      .intersection-container { width: 96vw; height: 60vw; min-width: 220px; min-height: 180px; }
+    @media (orientation: landscape) {
+      .intersection-container-mobile {
+        width: 96vw !important;
+        height: 60vw !important;
+        max-width: 330px !important;
+        max-height: 180px !important;
+      }
+    }
+    @media (max-width: 480px) {
+      .intersection-container-mobile {
+        min-width: 120px;
+        min-height: 90px;
+      }
+      .traffic-signal-box {
+        width: 30px;
+        height: 60px;
+      }
+      .traffic-signal-visual {
+        width: 20px;
+        height: 40px;
+      }
+      .light {
+        width: 10px;
+        height: 10px;
+      }
+    }
+    body, html {
+      overscroll-behavior-y: contain;
+      overscroll-behavior-x: contain;
     }
   `]
 })
