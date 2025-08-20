@@ -3,14 +3,17 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
 
 /**
  * TrafficNinjaComponent
- * 
+ *
  * Features:
  * - Four-way intersection simulation with two lanes per road.
  * - Realistic traffic signal system: green, yellow, and red phases for each direction (north-south & east-west).
- * - Signals change automatically every 10 seconds; no configuration or data download/upload options.
+ * - Signals change automatically every 10 seconds.
  * - North-South and East-West signals are always complementary for safe crossing.
- * - Four visually accurate traffic lights at the correct corners, facing oncoming traffic.
- * - Southbound signal is at top-left, northbound at top-right, eastbound at bottom-right, westbound at bottom-left.
+ * - Four visually accurate traffic lights at the correct ends of each road, centered as per user request.
+ *   - Northbound: end of north road, horizontally centered.
+ *   - Southbound: end of south road, horizontally centered.
+ *   - Eastbound: end of east road, vertically centered.
+ *   - Westbound: end of west road, vertically centered.
  * - Layout is strictly optimized for mobile portrait orientation.
  * - Clean, responsive UI using Bootstrap 5 and PrimeIcons v7.
  */
@@ -48,7 +51,7 @@ interface TrafficNinjaData {
           <!-- Draw lane markings -->
           <div class="lane-marking horizontal"></div>
           <div class="lane-marking vertical"></div>
-          <!-- Place traffic signals -->
+          <!-- Place traffic signals at road ends and centers -->
           <ng-container *ngFor="let signal of signals">
             <div [ngClass]="signal.position"
               class="traffic-signal-box d-flex flex-column align-items-center justify-content-center"
@@ -91,7 +94,6 @@ interface TrafficNinjaData {
     </div>
   `,
   styles: [`
-    /* Mobile portrait-only layout */
     :host {
       display: block;
       width: 100vw;
@@ -171,15 +173,38 @@ interface TrafficNinjaData {
       z-index: 2;
       opacity: 0.7;
     }
-    /* Traffic signal positioning for mobile portrait */
-    .top-left { position: absolute; top: 8px; left: 10px; }
-    .top-right { position: absolute; top: 8px; right: 10px; }
-    .bottom-right { position: absolute; bottom: 8px; right: 10px; }
-    .bottom-left { position: absolute; bottom: 8px; left: 10px; }
+    /* NEW: Road-end centered traffic signal positioning */
+    .signal-north {
+      position: absolute;
+      top: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+    }
+    .signal-south {
+      position: absolute;
+      bottom: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+    }
+    .signal-east {
+      position: absolute;
+      right: 2px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 20;
+    }
+    .signal-west {
+      position: absolute;
+      left: 2px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 20;
+    }
     .traffic-signal-box {
       width: 38px;
       height: 74px;
-      z-index: 10;
       user-select: none;
       background: rgba(255,255,255,0.08);
       border-radius: 10px;
@@ -250,7 +275,6 @@ interface TrafficNinjaData {
   `]
 })
 export class TrafficNinjaComponent extends CommonExternalComponent {
-  // Strict typing
   private static readonly PHASES: SignalPhase[] = ['green', 'yellow', 'red'];
   private static readonly DURATIONS: Record<SignalPhase, number> = {
     green: 10,
@@ -258,18 +282,19 @@ export class TrafficNinjaComponent extends CommonExternalComponent {
     red: 10
   };
 
+  // Positions updated for road-end centered placement
   signals: TrafficSignal[] = [
     {
-      id: 'tl', label: 'Top Left', controls: 'Southbound', position: 'top-left', direction: 'south', currentPhase: 'red'
+      id: 'north', label: 'North End', controls: 'Northbound', position: 'signal-north', direction: 'north', currentPhase: 'red'
     },
     {
-      id: 'tr', label: 'Top Right', controls: 'Northbound', position: 'top-right', direction: 'north', currentPhase: 'red'
+      id: 'south', label: 'South End', controls: 'Southbound', position: 'signal-south', direction: 'south', currentPhase: 'red'
     },
     {
-      id: 'br', label: 'Bottom Right', controls: 'Eastbound', position: 'bottom-right', direction: 'east', currentPhase: 'red'
+      id: 'east', label: 'East End', controls: 'Eastbound', position: 'signal-east', direction: 'east', currentPhase: 'red'
     },
     {
-      id: 'bl', label: 'Bottom Left', controls: 'Westbound', position: 'bottom-left', direction: 'west', currentPhase: 'red'
+      id: 'west', label: 'West End', controls: 'Westbound', position: 'signal-west', direction: 'west', currentPhase: 'red'
     }
   ];
 
@@ -288,7 +313,6 @@ export class TrafficNinjaComponent extends CommonExternalComponent {
     if (this.intervalId !== null) window.clearInterval(this.intervalId);
   }
 
-  // Main timer logic
   private startSignalCycle(): void {
     if (this.intervalId !== null) window.clearInterval(this.intervalId);
 
@@ -298,7 +322,6 @@ export class TrafficNinjaComponent extends CommonExternalComponent {
     let cycleOrder: SignalPhase[] = TrafficNinjaComponent.PHASES;
     let phaseIdx: number = cycleOrder.indexOf(nsPhase);
 
-    // Restore from local storage if present
     const saved = localStorage.getItem('trafficNinjaData');
     if (saved) {
       try {
@@ -309,7 +332,6 @@ export class TrafficNinjaComponent extends CommonExternalComponent {
       } catch {}
     }
 
-    // Set initial state
     this.setPhases(nsPhase);
     this.timeLeft = TrafficNinjaComponent.DURATIONS[nsPhase] - Math.floor((now - lastPhaseStart)/1000);
 
@@ -319,7 +341,6 @@ export class TrafficNinjaComponent extends CommonExternalComponent {
       this.timeLeft = Math.max(duration - elapsed, 0);
 
       if (elapsed >= duration) {
-        // Move to next phase
         phaseIdx = (phaseIdx + 1) % 3;
         nsPhase = cycleOrder[phaseIdx];
         lastPhaseStart = Date.now();
@@ -333,9 +354,7 @@ export class TrafficNinjaComponent extends CommonExternalComponent {
 
   private setPhases(nsPhase: SignalPhase): void {
     this.nsPhase = nsPhase;
-    // EW is always complementary
     this.ewPhase = nsPhase === 'red' ? 'green' : (nsPhase === 'green' ? 'red' : 'yellow');
-    // Assign to signals
     for (const s of this.signals) {
       if (s.direction === 'north' || s.direction === 'south') {
         s.currentPhase = this.nsPhase;
@@ -358,7 +377,6 @@ export class TrafficNinjaComponent extends CommonExternalComponent {
     }
   }
 
-  // Data persistence
   saveSettings(lastPhaseStart?: number, nsPhase?: SignalPhase): void {
     const data: TrafficNinjaData = {
       lastPhaseStart: lastPhaseStart ?? Date.now(),
