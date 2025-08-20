@@ -14,9 +14,9 @@ import { CommonExternalComponent } from '../common-external/common-external.comp
  * - Vehicles: Cars (red/blue/silver) and Motorcycles (black/green/yellow), sized to fit one lane.
  * - Cars have rounded rectangles with window details; motorcycles are tapered with headlight.
  * - Vehicles spawn at far ends, move forward in their lane, stop before intersection if signal is red/yellow.
+ * - Vehicles never overlap or collide; lane occupancy and collision avoidance enforced.
  * - Mix of cars/motorcycles, random intervals, no overcrowding, no lane overlap.
  * - User data stored in localStorage by default.
- * - Download/Upload buttons in header for user data backup/restore (.txt file).
  */
 
 type SignalPhase = 'red' | 'yellow' | 'green';
@@ -57,15 +57,6 @@ interface TrafficNinjaData {
         <span class="d-flex align-items-center">
           <i class="pi pi-car me-2"></i>
           <span class="fw-bold">Traffic Ninja – 4-Way Intersection</span>
-        </span>
-        <span>
-          <!-- Data download/upload -->
-          <button class="btn btn-light btn-sm me-1" title="Download app data"
-            (click)="downloadData()"><i class="pi pi-download"></i></button>
-          <label class="btn btn-light btn-sm mb-0" title="Upload app data">
-            <i class="pi pi-upload"></i>
-            <input type="file" accept=".txt" hidden (change)="uploadData($event)">
-          </label>
         </span>
       </div>
       <div class="card-body p-2">
@@ -399,6 +390,35 @@ export class TrafficNinjaComponent extends CommonExternalComponent {
     });
   }
 
+  /**
+   * Checks whether a new vehicle can be spawned in the given road/lane without causing overlap.
+   * Prevents spawning if another vehicle is too close at the start of the lane.
+   */
+  private canSpawnInLane(road: 'north'|'south'|'east'|'west', lane: 0|1): boolean {
+    // Find vehicles in this road/lane, sort by position ascending
+    const candidates = this.vehicles.filter(v => v.road === road && v.lane === lane).sort((a,b) => a.pos - b.pos);
+    if (candidates.length === 0) return true;
+    // Get size in normalized units
+    const vSizeNorm = this.vehicleLengthNorm(lane, candidates[0].type);
+    // If first vehicle is sufficiently far (>1.1x length), allow spawn
+    return candidates[0].pos > vSizeNorm * 1.05;
+  }
+
+  /**
+   * Returns the normalized length of a vehicle (relative to lane length, which is 1).
+   */
+  private vehicleLengthNorm(lane: 0|1, type: VehicleType): number {
+    // Use container size for scaling
+    const container = this.getContainerSize();
+    const info = this.roadInfo['north']; // all lanes same length
+    const pxLen = type === 'car'
+      ? this.vehiclePixelSize({type:'car'} as Vehicle).h
+      : this.vehiclePixelSize({type:'motorcycle'} as Vehicle).h;
+    // Lane length in px (vertical or horizontal)
+    const lanePx = info.axis === 'y' ? container.h : container.w;
+    return pxLen / lanePx;
+  }
+
   private spawnVehicle(
     road: 'north'|'south'|'east'|'west',
     initial: boolean = false,
@@ -415,8 +435,11 @@ export class TrafficNinjaComponent extends CommonExternalComponent {
       : this.motorcycleColors[Math.floor(Math.random() * this.motorcycleColors.length)];
 
     // Lane assignment: randomly pick incoming lane (0 or 1, but keep balance)
-    const lane: 0|1 = Math.random() < 0.5 ? 0 : 1;
-    // Only spawn in incoming lane (0) for simplicity in this version
+    const lane: 0|1 = 0; // Only incoming lane used in this version
+
+    // Collision prevention: avoid spawn if another vehicle is too close at start
+    if (!initial && !this.canSpawnInLane(road, lane)) return;
+
     const id = 'v'+(this.vehicleIdCounter++);
     const pos = typeof customPos === 'number' ? customPos : 0;
 
@@ -441,34 +464,72 @@ export class TrafficNinjaComponent extends CommonExternalComponent {
       lastTs = ts;
       let changed = false;
 
-      // Move vehicles
-      for (const v of this.vehicles) {
-        // Only move if not stopped
-        if (!v.stopped) {
-          // Determine if should stop (at intersection, red/yellow)
-          const approaching = v.pos < this.stopBeforeIntersection+0.01;
-          if (approaching && !this.canEnterIntersection(v.road)) {
-            if (v.pos + v.speed*dt/15 > this.stopBeforeIntersection) {
-              v.pos = this.stopBeforeIntersection;
-              v.stopped = true;
+      // Move vehicles, sorted by road and lane and position descending (rear-most first)
+      for (const road of ['north','south','east','west'] as const) {
+        for (const lane of [0,1] as const) {
+          // Only process vehicles in this road/lane, sorted rear-to-front
+          const laneVehicles = this.vehicles
+            .filter(v => v.road === road && v.lane === lane)
+            .sort((a, b) => a.pos - b.pos);
+
+          for (let i = 0; i < laneVehicles.length; ++i) {
+            const v = laneVehicles[i];
+            // Only move if not stopped
+            if (!v.stopped) {
+              // Determine if should stop (at intersection, red/yellow)
+              const approaching = v.pos < this.stopBeforeIntersection+0.01;
+              if (approaching && !this.canEnterIntersection(v.road)) {
+                if (v.pos + v.speed*dt/15 > this.stopBeforeIntersection) {
+                  v.pos = this.stopBeforeIntersection;
+                  v.stopped = true;
+                  changed = true;
+                  continue;
+                }
+              }
+              // COLLISION AVOIDANCE: check vehicle ahead
+              let maxAdvance = v.speed * dt / 15;
+              if (i > 0) {
+                // There's a vehicle ahead
+                const vAhead = laneVehicles[i-1];
+                const vLenNorm = this.vehicleLengthNorm(lane, v.type);
+                // Don't get closer than vLenNorm * 1.02
+                const distToAhead = vAhead.pos - v.pos;
+                const minGap = vLenNorm * 1.02;
+                if (distToAhead - maxAdvance < minGap) {
+                  maxAdvance = Math.max(0, distToAhead - minGap);
+                  if (maxAdvance < 1e-5) {
+                    v.stopped = true;
+                    changed = true;
+                    continue;
+                  }
+                }
+              }
+              v.pos += maxAdvance;
+              if (v.pos > 1.09) {
+                // Remove vehicle if out of screen/intersection
+                this.vehicles = this.vehicles.filter(x => x !== v);
+                changed = true;
+                continue;
+              }
               changed = true;
-              continue;
+            } else {
+              // If stopped, check if can go now
+              let canGo = this.canEnterIntersection(v.road);
+              // Also check if blocked by vehicle ahead
+              if (i > 0) {
+                const vAhead = laneVehicles[i-1];
+                const vLenNorm = this.vehicleLengthNorm(lane, v.type);
+                const distToAhead = vAhead.pos - v.pos;
+                const minGap = vLenNorm * 1.02;
+                if (distToAhead < minGap + 1e-4) {
+                  canGo = false;
+                }
+              }
+              if (canGo) {
+                v.stopped = false;
+                changed = true;
+              }
             }
-          }
-          // Advance position
-          v.pos += v.speed * dt / 15; // scale factor for visual realism
-          if (v.pos > 1.09) {
-            // Remove vehicle if out of screen/intersection
-            this.vehicles = this.vehicles.filter(x => x !== v);
-            changed = true;
-            continue;
-          }
-          changed = true;
-        } else {
-          // If stopped, check if can go now
-          if (this.canEnterIntersection(v.road)) {
-            v.stopped = false;
-            changed = true;
           }
         }
       }
@@ -592,32 +653,6 @@ export class TrafficNinjaComponent extends CommonExternalComponent {
         const data: TrafficNinjaData = JSON.parse(saved);
         this.vehicles = Array.isArray(data.vehicles) ? data.vehicles : [];
       } catch { this.vehicles = []; }
-    }
-  }
-
-  // --- DOWNLOAD/UPLOAD ---
-
-  downloadData(): void {
-    const data: TrafficNinjaData = {
-      lastPhaseStart: Date.now(),
-      nsPhase: this.nsPhase,
-      vehicles: this.vehicles
-    };
-    this.componentDataDownloader(data);
-  }
-
-  async uploadData(event: Event): Promise<void> {
-    const result = await this.componentDataUploader(event);
-    if (result) {
-      try {
-        // Validate structure minimally
-        if (typeof result.nsPhase === 'string' && Array.isArray(result.vehicles)) {
-          this.nsPhase = result.nsPhase;
-          this.vehicles = result.vehicles;
-          this.saveSettings(Date.now(), this.nsPhase);
-          this.zone.run(() => this.cdr.detectChanges());
-        }
-      } catch {}
     }
   }
 }
